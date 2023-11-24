@@ -81,10 +81,12 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProjLogger.cpp" />
+    <ClCompile Include="SocketWorker.cpp" />
     <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProjLogger.hpp" />
+    <ClInclude Include="SocketWorker.hpp" />
     <ClInclude Include="TcpServer.hpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

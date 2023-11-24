@@ -1,6 +1,5 @@
 #include "TcpServer.hpp"
 #include <arpa/inet.h>
-#include <format>
 #include "ProjLogger.hpp"
 #include <string.h>
 
@@ -23,11 +22,21 @@ TcpServer::Options::Options(bool _nonBlock)
 }
 
 TcpServer::TcpServer(std::string_view ipv4, uint16_t port, Options&& _opts)
-	: addrInfo(ipv4, port), opts{std::move(_opts)}
+	: addrInfo(ipv4, port), opts{ std::move(_opts) }, socketMapper{}, threadPool{}
 {
-	if (run() < 0) {
-		throw std::runtime_error("Server error");
+	if (init() < 0) {
+		throw std::runtime_error("Server init error");
 	}
+	if (run() < 0) {
+		throw std::runtime_error("Server run error");
+	}
+}
+
+int TcpServer::init() {
+	for (size_t i = 0; i < threadPool.size(); ++i) {
+		threadPool.getThreadObj(i).setMapper(&socketMapper);
+	}
+	return 0;
 }
 
 int TcpServer::run() {
@@ -63,13 +72,17 @@ int TcpServer::run() {
 
 	Log.debug("Server epoll_ctl");
 	struct epoll_event event, events[MAX_EPOLL_EVENTS];
-	event.events = EPOLLIN /* | EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR */;
+	event.events = EPOLLIN | EPOLLET /*| EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR */;
 	event.data.fd = serverFd;
 	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &event) < 0) {
 		Log.error(std::format("Error on epoll ctl", strerror(errno)));
 		serverClose();
 		return -1;
 	}
+	
+	//uint32_t ss = 0;
+	//uint32_t len = sizeof(ss);
+	//int err = getsockopt(serverFd, SOL_SOCKET, SO_RCVBUF, (char*)&ss, &len);
 
 	while (true) {
 		int numEvents = epoll_wait(epollFd, events, MAX_EPOLL_EVENTS, -1);
@@ -78,6 +91,7 @@ int TcpServer::run() {
 			serverClose();
 			return -1;
 		}
+		//Log.debug(std::format("Recv {} events", numEvents));
 		for (int i = 0; i < numEvents; ++i) {
 			if (events[i].data.fd == serverFd) {
 				// handle new connection
@@ -104,31 +118,25 @@ int TcpServer::run() {
 			}
 			else {
 				int clientFd = events[i].data.fd;
+				size_t threadIdx = 0;
+				if (auto optThreadIdx = socketMapper.findThreadIdx(clientFd); optThreadIdx.has_value()) {
+					threadIdx = optThreadIdx.value();
+					//Log.debug(std::format("Got existing idx {} for fd {}", threadIdx, clientFd));
+				}
+				else {
+					threadIdx = threadPool.getIdx();
+					socketMapper.addThreadIdx(clientFd, threadIdx);
+					//Log.debug(std::format("Got new idx {} for fd {}", threadIdx, clientFd));
+				}
+				auto& threadCtx = threadPool.getThreadObj(threadIdx);
 				if (events[i].events & EPOLLIN) {
-					Log.debug(std::format("Handling client data {}", clientFd));
-					bool err = false;
-					for (;;) {
-						ssize_t n = read(clientFd, buf, sizeof(buf));
-						if (n <= 0 && (errno != EAGAIN)) {
-							epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-							close(clientFd);
-							err = true;
-							break;
-						}
-						else if (errno == EAGAIN)
-						{
-							continue;
-						}
-						else {
-							Log.debug(std::format("Read {} bytes from {}", n, clientFd));
-							//break;
-						}
-					}
-					if (err) {
-						;
-					}
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, int clientFd) { threadCtx.onInputData(epollFd, clientFd); return 0; }), std::move(epollFd), std::move(clientFd));
+					//threadCtx.onInputData(epollFd, clientFd);
 				}
 				else if (events[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, int clientFd) { threadCtx.onError(epollFd, clientFd); return 0; }), std::move(epollFd), std::move(clientFd));
+					//threadCtx.onError(epollFd, clientFd);
+
 					Log.error(std::format("Client connection closed {}", clientFd));
 					epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
 					close(clientFd);
@@ -137,6 +145,8 @@ int TcpServer::run() {
 				continue;
 			}
 		}
+		// cooldown sleep to reduce number of small events
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 
