@@ -5,6 +5,8 @@ VisualStudioVersion = 17.2.32526.322
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EpollServer", "EpollServer\EpollServer.vcxproj", "{85C9974E-2710-4B0F-A69A-5DF29C6B4AEA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpputils", "cpputils\cpputils.vcxitems", "{F22D2890-D1B9-4E87-9903-44945D195DFD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -47,5 +49,9 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3F742BB6-C21D-4B19-A89A-D88D473FD91D}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		cpputils\cpputils.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
+		cpputils\cpputils.vcxitems*{f22d2890-d1b9-4e87-9903-44945d195dfd}*SharedItemsImports = 9
 	EndGlobalSection
 EndGlobal

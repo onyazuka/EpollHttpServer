@@ -59,11 +59,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -73,22 +73,30 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
-  <ImportGroup Label="Shared" />
+  <ImportGroup Label="Shared">
+    <Import Project="..\cpputils\cpputils.vcxitems" Label="Shared" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ProjLogger.cpp" />
+    <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ProjLogger.hpp" />
+    <ClInclude Include="TcpServer.hpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <CppLanguageStandard>c++20</CppLanguageStandard>
+      <CppLanguageStandard>c++2a</CppLanguageStandard>
+      <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <CppLanguageStandard>c++20</CppLanguageStandard>
+      <CppLanguageStandard>c++2a</CppLanguageStandard>
+      <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
