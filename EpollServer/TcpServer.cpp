@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include "ProjLogger.hpp"
 #include <string.h>
+#include <fcntl.h>
 
 using namespace inet::tcp;
 
@@ -44,6 +45,19 @@ int TcpServer::run() {
 	serverFd = socket(AF_INET, SOCK_STREAM | (opts.nonBlock ? SOCK_NONBLOCK : 0), 0);
 	if (serverFd < 0) {
 		Log.error(std::format("Error while creating socket: {}", strerror(errno)));
+		return -1;
+	}
+
+	int opt = 1;
+	if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+		Log.error(std::format("Error while setting SO_REUSEADDR to socket {}: {}", serverFd, strerror(errno)));
+		serverClose();
+		return -1;
+	}
+
+	if (fcntl(serverFd, F_SETFL, fcntl(serverFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
+		Log.error(std::format("Error while setting O_NONBLOCK to socket {}: {}", serverFd, strerror(errno)));
+		serverClose();
 		return -1;
 	}
 
@@ -94,26 +108,33 @@ int TcpServer::run() {
 		//Log.debug(std::format("Recv {} events", numEvents));
 		for (int i = 0; i < numEvents; ++i) {
 			if (events[i].data.fd == serverFd) {
-				// handle new connection
-				struct sockaddr_in clientAddr;
-				socklen_t clientAddrLen = sizeof(clientAddr);
-				int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
-				if ((clientFd < 0) && (errno != EAGAIN)) {
-					Log.error(std::format("Failed to accept client connection: {}", strerror(errno)));
-					continue;
-				}
-				else if (errno == EAGAIN) {
-					;
-				}
-				else {
-					event.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
-					event.data.fd = clientFd;
-					if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &event) < 0) {
-						Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
-						close(clientFd);
-						continue;
+				// handle new connections
+				for (;;) {
+					struct sockaddr_in clientAddr;
+					socklen_t clientAddrLen = sizeof(clientAddr);
+					int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
+					if (clientFd >= 0) {
+						if (fcntl(clientFd, F_SETFL, fcntl(clientFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
+							Log.debug(std::format("Couldn't set client socket {} as non-blocking", clientFd));
+						}
+						event.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+						event.data.fd = clientFd;
+						if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &event) < 0) {
+							Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
+							close(clientFd);
+							break;
+						}
+						Log.debug(std::format("Handling client {}", clientFd));
 					}
-					Log.debug(std::format("Handling client {}", clientFd));
+					else {
+						if (errno == EAGAIN) {
+							break;
+						}
+						else {
+							Log.error(std::format("Failed to accept client connection: {}", strerror(errno)));
+							break;
+						}
+					}
 				}
 			}
 			else {
@@ -131,6 +152,7 @@ int TcpServer::run() {
 				auto& threadCtx = threadPool.getThreadObj(threadIdx);
 				if (events[i].events & EPOLLIN) {
 					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, int clientFd) { threadCtx.onInputData(epollFd, clientFd); return 0; }), std::move(epollFd), std::move(clientFd));
+					//Log.debug(std::format("Queue size is {} for idx {}", threadCtx.queue().size(), threadIdx));
 					//threadCtx.onInputData(epollFd, clientFd);
 				}
 				else if (events[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {

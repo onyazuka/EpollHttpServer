@@ -75,7 +75,8 @@ void SocketDataHandler::onInputData(int epollFd, int fd) {
 		}
 		else if (errno == EAGAIN)
 		{
-			Log.debug(std::format("EAGAIN on socket {}", fd));
+			//Log.debug(std::format("EAGAIN on socket {}", fd));
+			break;
 		}
 		else {
 			Log.debug(std::format("Read {} bytes from {}", n, fd));
