@@ -8,6 +8,8 @@
 #include <string_view>
 #include <source_location>
 #include <thread>
+#include "Socket.hpp"
+#include "SslSocket.hpp"
 #include "SocketWorker.hpp"
 
 namespace inet::tcp {
@@ -53,7 +55,8 @@ namespace inet::tcp {
 		static constexpr int MAX_LISTENING_CLIENTS = 128;
 		static constexpr int MAX_EPOLL_EVENTS = 100;
 
-		int serverFd = -1;
+		const int serverFd;
+		const SslSocket serverSock;
 		int epollFd = -1;
 		AddrInfo addrInfo;
 		Options opts;

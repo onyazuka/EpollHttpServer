@@ -23,7 +23,7 @@ TcpServer::Options::Options(bool _nonBlock)
 }
 
 TcpServer::TcpServer(std::string_view ipv4, uint16_t port, Options&& _opts)
-	: addrInfo(ipv4, port), opts{ std::move(_opts) }, socketMapper{}, threadPool{}
+	: serverFd{ socket(AF_INET, SOCK_STREAM | (opts.nonBlock ? SOCK_NONBLOCK : 0), 0) }, serverSock{std::shared_ptr<ISocket>(new Socket(serverFd)), 0}, addrInfo(ipv4, port), opts{std::move(_opts)}, socketMapper{}, threadPool{}
 {
 	if (init() < 0) {
 		throw std::runtime_error("Server init error");
@@ -34,6 +34,11 @@ TcpServer::TcpServer(std::string_view ipv4, uint16_t port, Options&& _opts)
 }
 
 int TcpServer::init() {
+	Log.debug("Server creating socket");
+	if (serverFd < 0) {
+		Log.error(std::format("Error while creating socket: {}", strerror(errno)));
+		return -1;
+	}
 	for (size_t i = 0; i < threadPool.size(); ++i) {
 		threadPool.getThreadObj(i).setMapper(&socketMapper);
 	}
@@ -41,24 +46,20 @@ int TcpServer::init() {
 }
 
 int TcpServer::run() {
-	Log.debug("Server creating socket");
-	serverFd = socket(AF_INET, SOCK_STREAM | (opts.nonBlock ? SOCK_NONBLOCK : 0), 0);
-	if (serverFd < 0) {
-		Log.error(std::format("Error while creating socket: {}", strerror(errno)));
-		return -1;
-	}
-
 	int opt = 1;
+	serverSock.init();
 	if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		Log.error(std::format("Error while setting SO_REUSEADDR to socket {}: {}", serverFd, strerror(errno)));
 		serverClose();
 		return -1;
 	}
 
-	if (fcntl(serverFd, F_SETFL, fcntl(serverFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-		Log.error(std::format("Error while setting O_NONBLOCK to socket {}: {}", serverFd, strerror(errno)));
-		serverClose();
-		return -1;
+	if (opts.nonBlock) {
+		if (fcntl(serverFd, F_SETFL, fcntl(serverFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
+			Log.error(std::format("Error while setting O_NONBLOCK to socket {}: {}", serverFd, strerror(errno)));
+			serverClose();
+			return -1;
+		}
 	}
 
 	Log.debug(std::format("Server binding socket {} on ip {} and port {}", serverFd, addrInfo.sAddr(), addrInfo.port()));
@@ -93,6 +94,8 @@ int TcpServer::run() {
 		serverClose();
 		return -1;
 	}
+
+	
 	
 	//uint32_t ss = 0;
 	//uint32_t len = sizeof(ss);
@@ -109,59 +112,50 @@ int TcpServer::run() {
 		for (int i = 0; i < numEvents; ++i) {
 			if (events[i].data.fd == serverFd) {
 				// handle new connections
-				for (;;) {
-					struct sockaddr_in clientAddr;
-					socklen_t clientAddrLen = sizeof(clientAddr);
-					int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
-					if (clientFd >= 0) {
-						if (fcntl(clientFd, F_SETFL, fcntl(clientFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-							Log.debug(std::format("Couldn't set client socket {} as non-blocking", clientFd));
-						}
-						event.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
-						event.data.fd = clientFd;
-						if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &event) < 0) {
-							Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
-							close(clientFd);
-							break;
-						}
-						Log.debug(std::format("Handling client {}", clientFd));
+				auto clientFds = serverSock.acceptAll(opts.nonBlock);
+				for (auto clientFd : clientFds) {
+					int fd = clientFd->fd();
+					event.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+					event.data.fd = fd;
+					if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) < 0) {
+						Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
+						close(fd);
+						break;
 					}
-					else {
-						if (errno == EAGAIN) {
-							break;
-						}
-						else {
-							Log.error(std::format("Failed to accept client connection: {}", strerror(errno)));
-							break;
-						}
-					}
+					Log.debug(std::format("Handling client {}", fd));
+
+					size_t threadIdx = threadPool.getIdx();
+					socketMapper.addThreadIdx(fd, clientFd, threadIdx);
 				}
 			}
 			else {
-				int clientFd = events[i].data.fd;
+				std::shared_ptr<ISocket> clientSock = nullptr;
 				size_t threadIdx = 0;
-				if (auto optThreadIdx = socketMapper.findThreadIdx(clientFd); optThreadIdx.has_value()) {
-					threadIdx = optThreadIdx.value();
+				if (auto [sock, idx] = socketMapper.findThreadIdx(events[i].data.fd); sock != nullptr) {
+					threadIdx = idx;
+					clientSock = sock;
 					//Log.debug(std::format("Got existing idx {} for fd {}", threadIdx, clientFd));
 				}
 				else {
-					threadIdx = threadPool.getIdx();
-					socketMapper.addThreadIdx(clientFd, threadIdx);
-					//Log.debug(std::format("Got new idx {} for fd {}", threadIdx, clientFd));
+					int fd = event.data.fd;
+					Log.error(std::format("Unknown fd {}, closing connection", fd));
+					epoll_ctl(epollFd, EPOLL_CTL_DEL,fd, NULL);
+					close(fd);
+					continue;
 				}
 				auto& threadCtx = threadPool.getThreadObj(threadIdx);
 				if (events[i].events & EPOLLIN) {
-					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, int clientFd) { threadCtx.onInputData(epollFd, clientFd); return 0; }), std::move(epollFd), std::move(clientFd));
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onInputData(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
 					//Log.debug(std::format("Queue size is {} for idx {}", threadCtx.queue().size(), threadIdx));
-					//threadCtx.onInputData(epollFd, clientFd);
+					//threadCtx.onInputData(epollFd, clientSock);
 				}
 				else if (events[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
-					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, int clientFd) { threadCtx.onError(epollFd, clientFd); return 0; }), std::move(epollFd), std::move(clientFd));
-					//threadCtx.onError(epollFd, clientFd);
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onError(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
+					//threadCtx.onError(epollFd, clientSock);
 
-					Log.error(std::format("Client connection closed {}", clientFd));
-					epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-					close(clientFd);
+					//Log.error(std::format("Client connection closed {}", clientSock.fd()));
+					//epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+					//close(clientFd);
 					continue;
 				}
 				continue;

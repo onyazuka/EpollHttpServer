@@ -81,12 +81,16 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProjLogger.cpp" />
+    <ClCompile Include="Socket.cpp" />
     <ClCompile Include="SocketWorker.cpp" />
+    <ClCompile Include="SslSocket.cpp" />
     <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProjLogger.hpp" />
+    <ClInclude Include="Socket.hpp" />
     <ClInclude Include="SocketWorker.hpp" />
+    <ClInclude Include="SslSocket.hpp" />
     <ClInclude Include="TcpServer.hpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -94,12 +98,20 @@
       <CppLanguageStandard>c++2a</CppLanguageStandard>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <Link>
+      <LibraryDependencies>ssl;crypto</LibraryDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <CppLanguageStandard>c++2a</CppLanguageStandard>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <Link>
+      <LibraryDependencies>ssl;crypto</LibraryDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

@@ -2,6 +2,7 @@
 #include <optional>
 #include <shared_mutex>
 #include <unordered_map>
+#include "Socket.hpp"
 
 class SocketThreadMapper;
 
@@ -19,12 +20,12 @@ public:
 	void join();
 	QueueT& queue();
 	void setMapper(SocketThreadMapper* _mapper);
-	void onInputData(int epollFd, int socketFd);
-	void onError(int epollFd, int socketFd);
+	void onInputData(int epollFd, std::shared_ptr<inet::ISocket> sock);
+	void onError(int epollFd, std::shared_ptr<inet::ISocket> sock);
 	void run();
 private:
-	void onCloseClient(int epollFd, int socketFd);
-	bool checkFd(int fd);
+	void onCloseClient(int epollFd, std::shared_ptr<inet::ISocket> sock);
+	bool checkFd(std::shared_ptr<inet::ISocket> sock);
 	QueueT tasksQueue;
 	std::jthread thread;
 	static constexpr int BUF_SIZE = 1 * 1024 * 1024;
@@ -37,10 +38,11 @@ private:
 
 class SocketThreadMapper {
 public:
-	std::optional<size_t> findThreadIdx(int fd);
-	void addThreadIdx(int fd, size_t threadIdx);
+	using SockT = std::shared_ptr<inet::ISocket>;
+	std::pair<SockT, size_t> findThreadIdx(int fd);
+	void addThreadIdx(int fd, SockT sock, size_t threadIdx);
 	void removeFd(int fd);
 private:
 	std::shared_mutex mtx;
-	std::unordered_map<int, size_t> map;
+	std::unordered_map<int, std::pair<SockT, size_t>> map;
 };
