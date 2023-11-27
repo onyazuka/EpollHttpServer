@@ -23,7 +23,7 @@ TcpServer::Options::Options(bool _nonBlock)
 }
 
 TcpServer::TcpServer(std::string_view ipv4, uint16_t port, Options&& _opts)
-	: serverFd{ socket(AF_INET, SOCK_STREAM | (opts.nonBlock ? SOCK_NONBLOCK : 0), 0) }, serverSock{std::shared_ptr<ISocket>(new Socket(serverFd)), 0}, addrInfo(ipv4, port), opts{std::move(_opts)}, socketMapper{}, threadPool{}
+	: serverFd{ socket(AF_INET, SOCK_STREAM | (_opts.nonBlock ? SOCK_NONBLOCK : 0), 0) }, serverSock{std::shared_ptr<ISocket>(new Socket(serverFd)), 0}, addrInfo(ipv4, port), opts{std::move(_opts)}, socketMapper{}, threadPool{}
 {
 	if (init() < 0) {
 		throw std::runtime_error("Server init error");

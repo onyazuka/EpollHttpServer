@@ -1,3 +1,6 @@
 [submodule "cpputils"]
 	path = cpputils
 	url = https://github.com/onyazuka/cpputils.git
+[submodule "cpputils_web"]
+	path = cpputils_web
+	url = https://github.com/onyazuka/cpputils_web.git

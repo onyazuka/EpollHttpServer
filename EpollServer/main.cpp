@@ -1,5 +1,6 @@
 #include "ProjLogger.hpp"
 #include "TcpServer.hpp"
+#include "test/testHttp.hpp"
 
 using namespace std;
 using namespace inet::tcp;

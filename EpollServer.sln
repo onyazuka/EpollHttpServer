@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EpollServer", "EpollServer\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpputils", "cpputils\cpputils.vcxitems", "{F22D2890-D1B9-4E87-9903-44945D195DFD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpputils_web_sh", "cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems", "{F3A7F892-7525-412A-92AD-5E9DD92015AC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -52,6 +54,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		cpputils\cpputils.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
+		cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
 		cpputils\cpputils.vcxitems*{f22d2890-d1b9-4e87-9903-44945d195dfd}*SharedItemsImports = 9
+		cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems*{f3a7f892-7525-412a-92ad-5e9dd92015ac}*SharedItemsImports = 9
 	EndGlobalSection
 EndGlobal
