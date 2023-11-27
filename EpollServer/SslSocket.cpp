@@ -76,9 +76,10 @@ std::shared_ptr<ISocket> SslSocket::accept(bool setNonBlock) const {
     return std::shared_ptr<ISocket>(new SslSocket(client, clientSsl));
 }
 
-ssize_t SslSocket::read(std::span<char> buf) const {
+ssize_t SslSocket::read(SocketBuffer& sockBuf) const {
     size_t nbytes = 0;
     for (;;) {
+        auto buf = sockBuf.get();
         int n = SSL_read(ssl, buf.data(), buf.size());
         int err = SSL_get_error(ssl, n);
         if (err != SSL_ERROR_NONE) {

@@ -29,16 +29,6 @@ namespace inet::tcp {
 		uint16_t _port;
 	};
 
-	class Buffer {
-	public:
-		Buffer(size_t capacity);
-		void supplyData(char* data, size_t sz);
-		
-	private:
-		std::vector<char> buf;
-		size_t size;
-	};
-
 	class TcpServer {
 	public:
 

@@ -57,11 +57,6 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 	if (!checkFd(clientSock)) return;
 	//cout << format("Reading from epoll {} and socket {}\n", epollFd, socketFd);
 	auto& buf = sockBufs[fd];
-	if (buf.empty()) {
-		// new connection
-		// NOT reserve
-		buf.resize(BUF_SIZE);
-	}
 	Log.debug(std::format("Handling client data {}", fd));
 	if (ssize_t nbytes = clientSock->read(buf); nbytes <= 0 && nbytes != -EAGAIN) {
 		onError(epollFd, clientSock);

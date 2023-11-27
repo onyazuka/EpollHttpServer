@@ -28,8 +28,7 @@ private:
 	bool checkFd(std::shared_ptr<inet::ISocket> sock);
 	QueueT tasksQueue;
 	std::jthread thread;
-	static constexpr int BUF_SIZE = 1 * 1024 * 1024;
-	std::unordered_map<int, std::vector<char>> sockBufs;
+	std::unordered_map<int, inet::SocketBuffer> sockBufs;
 	//int epollFd;
 	std::mutex mtx;
 	SocketThreadMapper* mapper = nullptr;

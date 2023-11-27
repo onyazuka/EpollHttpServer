@@ -6,6 +6,36 @@
 
 using namespace inet;
 
+SocketBuffer::SocketBuffer(size_t capacity) 
+	: size{ 0 }, capacity{capacity}
+{
+	assert(capacity <= MaxCap);
+	data = std::shared_ptr<uint8_t[]>(new uint8_t[capacity]);
+}
+
+std::span<uint8_t> SocketBuffer::get() {
+	if ((capacity - size) < MinSizeAvail) {
+		realloc();
+	}
+	return std::span<uint8_t>(data.get() + size, capacity - size);
+}
+
+void SocketBuffer::realloc(size_t newCap) {
+	assert(newCap <= MaxCap && newCap > capacity);
+	std::shared_ptr<uint8_t[]> newData(new uint8_t[newCap]);
+	memcpy(newData.get(), data.get(), size);
+	capacity = newCap;
+	data = newData;
+}
+
+void SocketBuffer::realloc() {
+	realloc(std::min(MaxCap, std::max((size_t)0, (capacity + MinSizeAvail) * 2)));
+}
+
+void SocketBuffer::clear() {
+	size = 0;
+}
+
 ISocket::~ISocket() {
 	;
 }
@@ -58,9 +88,10 @@ std::shared_ptr<ISocket> Socket::accept(bool setNonBlock) const {
 	}
 }
 
-ssize_t Socket::read(std::span<char> buf) const {
+ssize_t Socket::read(SocketBuffer& sockBuf) const {
 	size_t nbytes = 0;
 	for (;;) {
+		auto buf = sockBuf.get();
 		ssize_t n = ::read(_fd, buf.data(), buf.size());
 		//Log.debug(std::format("n = {}, and errno is {}", n, errno));
 		if (n <= 0) {

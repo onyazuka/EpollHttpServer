@@ -10,7 +10,7 @@ namespace inet {
 		~SslSocket();
 		int init() const override;
 		std::shared_ptr<ISocket> accept(bool setNonBlock) const override;
-		ssize_t read(std::span<char> buf) const override;
+		ssize_t read(SocketBuffer& buf) const override;
 		ssize_t write(std::span<char> buf) const override;
 		//int shutdown(int flags);
 		int close() override;
