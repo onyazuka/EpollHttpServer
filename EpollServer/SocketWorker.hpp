@@ -3,6 +3,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include "Socket.hpp"
+#include "Http.hpp"
 
 class SocketThreadMapper;
 
@@ -10,7 +11,8 @@ class SocketDataHandler {
 public:
 	using TaskT = std::pair<std::packaged_task<std::any(std::any&)>, std::any>;
 	using QueueT = util::mt::SafeQueue<TaskT>;
-	SocketDataHandler(QueueT&& tasksQueue);
+	using ThreadPoolT = util::mt::RollingThreadPool<SocketDataHandler>;
+	SocketDataHandler(QueueT&& tasksQueue, ThreadPoolT* ptp, size_t threadIdx);
 	SocketDataHandler(const SocketDataHandler&) = delete;
 	SocketDataHandler& operator=(const SocketDataHandler&) = delete;
 	SocketDataHandler(SocketDataHandler&& other) noexcept;
@@ -24,11 +26,25 @@ public:
 	void onError(int epollFd, std::shared_ptr<inet::ISocket> sock);
 	void run();
 private:
+
+	struct Connection {
+		inet::InputSocketBuffer ibuf;
+		size_t lastReadOffset = 0;
+		util::web::http::HttpParser<util::web::http::HttpRequest> request;
+		size_t bodyStartPos = 0;
+
+		inet::OutputSocketBuffer obuf;
+	};
+
 	void onCloseClient(int epollFd, std::shared_ptr<inet::ISocket> sock);
+	void onHttpRequest(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request);
+	void onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock);
 	bool checkFd(std::shared_ptr<inet::ISocket> sock);
 	QueueT tasksQueue;
+	ThreadPoolT* threadPool = nullptr;
+	size_t threadIdx;
 	std::jthread thread;
-	std::unordered_map<int, inet::SocketBuffer> sockBufs;
+	std::unordered_map<int, Connection> sockConnection;
 	//int epollFd;
 	std::mutex mtx;
 	SocketThreadMapper* mapper = nullptr;

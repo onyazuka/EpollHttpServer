@@ -76,11 +76,10 @@ std::shared_ptr<ISocket> SslSocket::accept(bool setNonBlock) const {
     return std::shared_ptr<ISocket>(new SslSocket(client, clientSsl));
 }
 
-ssize_t SslSocket::read(SocketBuffer& sockBuf) const {
+ssize_t SslSocket::read(InputSocketBuffer& sockBuf) const {
     size_t nbytes = 0;
     for (;;) {
-        auto buf = sockBuf.get();
-        int n = SSL_read(ssl, buf.data(), buf.size());
+        ssize_t n = sockBuf.read(&::SSL_read, ssl);
         int err = SSL_get_error(ssl, n);
         if (err != SSL_ERROR_NONE) {
             if (err == SSL_ERROR_ZERO_RETURN) {
@@ -107,8 +106,40 @@ ssize_t SslSocket::read(SocketBuffer& sockBuf) const {
     return nbytes;
 }
 
-ssize_t SslSocket::write(std::span<char> buf) const {
-    return -1;
+ssize_t SslSocket::write(OutputSocketBuffer& sockBuf) const {
+    size_t nbytes = 0;
+    for (;;) {
+        ssize_t n = sockBuf.write(&::SSL_write, ssl);
+        int err = SSL_get_error(ssl, n);
+        if (err != SSL_ERROR_NONE) {
+            if (err == SSL_ERROR_ZERO_RETURN) {
+                Log.debug(std::format("error writing to socket {}", psock->fd()));
+                return 0;
+            }
+            else if (errno == SSL_ERROR_WANT_WRITE) {
+                // can't write into socket - sleep and try again
+                //Log.debug(std::format("Couldn't write to socket {} - EAGAIN", _fd));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                //continue;
+                return nbytes ? nbytes : -EAGAIN;
+            }
+            else {
+                Log.error(std::format("error writing to socket {}", psock->fd()));
+                return -EBADFD;
+            }
+        }
+        else if (!sockBuf.finished()) {
+            Log.debug(std::format("Write {} bytes to {}", n, psock->fd()));
+            nbytes += n;
+            continue;
+        }
+        else {
+            Log.debug(std::format("Write {} bytes to {}", n, psock->fd()));
+            nbytes += n;
+            return nbytes;
+        }
+    }
+    return nbytes;
 }
 
 int SslSocket::close() {

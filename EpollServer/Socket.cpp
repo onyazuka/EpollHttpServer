@@ -6,34 +6,52 @@
 
 using namespace inet;
 
-SocketBuffer::SocketBuffer(size_t capacity) 
-	: size{ 0 }, capacity{capacity}
+InputSocketBuffer::InputSocketBuffer(size_t capacity) 
+	: _size{ 0 }, _capacity{capacity}
 {
-	assert(capacity <= MaxCap);
-	data = std::shared_ptr<uint8_t[]>(new uint8_t[capacity]);
+	assert(_capacity <= MaxCap);
+	_data = std::shared_ptr<uint8_t[]>(new uint8_t[_capacity]);
 }
 
-std::span<uint8_t> SocketBuffer::get() {
-	if ((capacity - size) < MinSizeAvail) {
-		realloc();
-	}
-	return std::span<uint8_t>(data.get() + size, capacity - size);
+std::span<uint8_t> InputSocketBuffer::get() {
+	return std::span<uint8_t>(_data.get(), _size);
 }
 
-void SocketBuffer::realloc(size_t newCap) {
-	assert(newCap <= MaxCap && newCap > capacity);
+std::span<uint8_t> InputSocketBuffer::getTail() {
+	return std::span<uint8_t>(_data.get() + _size, _capacity - _size);
+}
+
+void InputSocketBuffer::realloc(size_t newCap) {
+	assert(newCap <= MaxCap && newCap > _capacity);
 	std::shared_ptr<uint8_t[]> newData(new uint8_t[newCap]);
-	memcpy(newData.get(), data.get(), size);
-	capacity = newCap;
-	data = newData;
+	memcpy(newData.get(), _data.get(), _size);
+	_capacity = newCap;
+	_data = newData;
 }
 
-void SocketBuffer::realloc() {
-	realloc(std::min(MaxCap, std::max((size_t)0, (capacity + MinSizeAvail) * 2)));
+void InputSocketBuffer::realloc() {
+	realloc(std::min(MaxCap, std::max((size_t)0, (_capacity + MinSizeAvail) * 2)));
 }
 
-void SocketBuffer::clear() {
-	size = 0;
+void InputSocketBuffer::clear() {
+	_size = 0;
+}
+
+// clears n bytes and moves rest of bytes to the beginning of the buffer
+void InputSocketBuffer::clear(size_t n) {
+	assert(_size >= n);
+	memmove(_data.get(), _data.get() + n, _size - n);
+	_size = _size - n;
+}
+
+OutputSocketBuffer::OutputSocketBuffer() {
+	;
+}
+
+OutputSocketBuffer::OutputSocketBuffer(std::string&& sdata)
+	: _data{ std::move(sdata) }
+{
+	;
 }
 
 ISocket::~ISocket() {
@@ -88,11 +106,10 @@ std::shared_ptr<ISocket> Socket::accept(bool setNonBlock) const {
 	}
 }
 
-ssize_t Socket::read(SocketBuffer& sockBuf) const {
+ssize_t Socket::read(InputSocketBuffer& sockBuf) const {
 	size_t nbytes = 0;
 	for (;;) {
-		auto buf = sockBuf.get();
-		ssize_t n = ::read(_fd, buf.data(), buf.size());
+		ssize_t n = sockBuf.read(&::read, _fd);
 		//Log.debug(std::format("n = {}, and errno is {}", n, errno));
 		if (n <= 0) {
 			if (n == 0) {
@@ -113,38 +130,47 @@ ssize_t Socket::read(SocketBuffer& sockBuf) const {
 		else {
 			Log.debug(std::format("Read {} bytes from {}", n, _fd));
 			nbytes += n;
+			
 			//break;
 		}
 	}
 	return nbytes;
 }
 
-ssize_t Socket::write(std::span<char> buf) const {
+ssize_t Socket::write(OutputSocketBuffer& sockBuf) const {
+	size_t nbytes = 0;
 	for (;;) {
-		ssize_t n = ::write(_fd, buf.data(), buf.size());
-		if ((n <= 0) && (errno != EAGAIN)) {
-			Log.error(std::format("error writing to socket {}", _fd));
-			if (n == 0) return 0;
-			else return -errno;
+		ssize_t n = sockBuf.write(&::write, _fd);
+		if (n <= 0) {
+			if (n == 0) {
+				Log.debug(std::format("error writing to socket {}", _fd));
+				return 0;
+			}
+			else if (errno == EAGAIN) {
+				// can't write into socket - sleep and try again
+				//Log.debug(std::format("Couldn't write to socket {} - EAGAIN", _fd));
+				//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				//continue;
+				return nbytes ? nbytes : -EAGAIN;
+			}
+			else {
+				Log.error(std::format("error writing to socket {}", _fd));
+				return -errno;
+			}
 		}
-		else if (errno == EAGAIN) {
-			// can't write into socket - sleep and try again
-			Log.debug(std::format("Couldn't write to socket{} - EAGAIN", _fd));
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			continue;
-		}
-		else if (n < buf.size()) {
-			Log.debug(std::format("Writtten only {} from {} bytes to {}, waiting and trying to write the rest", n, buf.size(), _fd));
-			buf = std::span<char>(buf.data() + n, buf.size() - n);
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		else if (!sockBuf.finished()) {
+			//Log.debug(std::format("Writtten only {} from {} bytes to {}, waiting and trying to write the rest", n, buf.size(), _fd));
+			Log.debug(std::format("Write {} bytes to {}", n, _fd));
+			nbytes += n;
 			continue;
 		}
 		else {
 			Log.debug(std::format("Write {} bytes to {}", n, _fd));
-			return n;
+			nbytes += n;
+			return nbytes;
 		}
 	}
-	return 0;
+	return nbytes;
 }
 
 int Socket::close() {

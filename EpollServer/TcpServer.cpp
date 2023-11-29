@@ -87,7 +87,7 @@ int TcpServer::run() {
 
 	Log.debug("Server epoll_ctl");
 	struct epoll_event event, events[MAX_EPOLL_EVENTS];
-	event.events = EPOLLIN | EPOLLET /*| EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR */;
+	event.events = EPOLLIN | EPOLLET | EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR ;
 	event.data.fd = serverFd;
 	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &event) < 0) {
 		Log.error(std::format("Error on epoll ctl", strerror(errno)));
@@ -115,7 +115,7 @@ int TcpServer::run() {
 				auto clientFds = serverSock.acceptAll(opts.nonBlock);
 				for (auto clientFd : clientFds) {
 					int fd = clientFd->fd();
-					event.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+					event.events = EPOLLIN | EPOLLET | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
 					event.data.fd = fd;
 					if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) < 0) {
 						Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
@@ -137,19 +137,14 @@ int TcpServer::run() {
 					//Log.debug(std::format("Got existing idx {} for fd {}", threadIdx, clientFd));
 				}
 				else {
-					int fd = event.data.fd;
+					int fd = events[i].data.fd;
 					Log.error(std::format("Unknown fd {}, closing connection", fd));
 					epoll_ctl(epollFd, EPOLL_CTL_DEL,fd, NULL);
 					close(fd);
 					continue;
 				}
 				auto& threadCtx = threadPool.getThreadObj(threadIdx);
-				if (events[i].events & EPOLLIN) {
-					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onInputData(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
-					//Log.debug(std::format("Queue size is {} for idx {}", threadCtx.queue().size(), threadIdx));
-					//threadCtx.onInputData(epollFd, clientSock);
-				}
-				else if (events[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+				if (events[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
 					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onError(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
 					//threadCtx.onError(epollFd, clientSock);
 
@@ -157,6 +152,11 @@ int TcpServer::run() {
 					//epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
 					//close(clientFd);
 					continue;
+				}
+				else if (events[i].events & EPOLLIN) {
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onInputData(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
+					//Log.debug(std::format("Queue size is {} for idx {}", threadCtx.queue().size(), threadIdx));
+					//threadCtx.onInputData(epollFd, clientSock);
 				}
 				continue;
 			}
