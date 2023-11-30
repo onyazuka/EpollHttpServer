@@ -23,7 +23,7 @@ TcpServer::Options::Options(bool _nonBlock)
 }
 
 TcpServer::TcpServer(std::string_view ipv4, uint16_t port, Options&& _opts)
-	: serverFd{ socket(AF_INET, SOCK_STREAM | (_opts.nonBlock ? SOCK_NONBLOCK : 0), 0) }, serverSock{std::shared_ptr<ISocket>(new Socket(serverFd)), 0}, addrInfo(ipv4, port), opts{std::move(_opts)}, socketMapper{}, threadPool{}
+	: serverFd{ socket(AF_INET, SOCK_STREAM | (_opts.nonBlock ? SOCK_NONBLOCK : 0), 0) }, serverSock{std::shared_ptr<ISocket>(new SocketT(serverFd)), 0}, addrInfo(ipv4, port), opts{std::move(_opts)}, socketMapper{}, threadPool{}
 {
 	if (init() < 0) {
 		throw std::runtime_error("Server init error");
@@ -54,13 +54,17 @@ int TcpServer::run() {
 		return -1;
 	}
 
-	if (opts.nonBlock) {
+	if (!opts.nonBlock) {
+		Log.warning("WARNING: only non-blocking operations are now permitted, opts.nonBlocking option has no effect for now");
+	}
+
+	//if (opts.nonBlock) {
 		if (fcntl(serverFd, F_SETFL, fcntl(serverFd, F_GETFL, 0) | O_NONBLOCK) < 0) {
 			Log.error(std::format("Error while setting O_NONBLOCK to socket {}: {}", serverFd, strerror(errno)));
 			serverClose();
 			return -1;
 		}
-	}
+	//}
 
 	Log.debug(std::format("Server binding socket {} on ip {} and port {}", serverFd, addrInfo.sAddr(), addrInfo.port()));
 	const auto& addr = addrInfo.sockAddr();
@@ -112,8 +116,12 @@ int TcpServer::run() {
 		for (int i = 0; i < numEvents; ++i) {
 			if (events[i].data.fd == serverFd) {
 				// handle new connections
-				auto clientFds = serverSock.acceptAll(opts.nonBlock);
-				for (auto clientFd : clientFds) {
+				auto [errOccured, clientFds] = serverSock.acceptAll();
+				if (clientFds.empty() || errOccured) {
+					Log.error(serverSock.strerr());
+				}
+				for (auto errCliendFdPair : clientFds) {
+					auto& clientFd = errCliendFdPair.second;
 					int fd = clientFd->fd();
 					event.events = EPOLLIN | EPOLLET | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
 					event.data.fd = fd;

@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdio>
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -9,7 +10,8 @@
 #include <source_location>
 #include <thread>
 #include "Socket.hpp"
-#include "SslSocket.hpp"
+#include "TcpNonblockingSocket.hpp"
+#include "SslTcpNonblockingSocket.hpp"
 #include "SocketWorker.hpp"
 
 namespace inet::tcp {
@@ -32,6 +34,9 @@ namespace inet::tcp {
 	class TcpServer {
 	public:
 
+		using SocketT = TcpNonblockingSocket;
+		using SslSocketT = SslTcpNonblockingSocket;
+
 		struct Options {
 			Options(bool _nonBlock);
 			bool nonBlock;
@@ -46,7 +51,7 @@ namespace inet::tcp {
 		static constexpr int MAX_EPOLL_EVENTS = 100;
 
 		const int serverFd;
-		const SslSocket serverSock;
+		const SslSocketT serverSock;
 		int epollFd = -1;
 		AddrInfo addrInfo;
 		Options opts;

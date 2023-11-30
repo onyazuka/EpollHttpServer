@@ -76,13 +76,17 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 	size_t offset = buf.size();
 	ssize_t nbytes = 0;
 	if (nbytes = clientSock->read(buf); nbytes <= 0 && nbytes != -EAGAIN) {
-		Log.debug(std::format("Error number {} on {}: {}", nbytes, fd, strerror(errno)));
+		//Log.debug(std::format("Error number {} on {}: {}", nbytes, fd, strerror(errno)));
+		Log.error(clientSock->strerr());
 		onError(epollFd, clientSock);
 		return;
 	}
 	else if (nbytes == -EAGAIN) {
 		Log.debug(std::format("Error number EAGAIN on {}", fd));
 		return;
+	}
+	else {
+		Log.debug(std::format("Read {} bytes from {}", nbytes, clientSock->fd()));
 	}
 	auto bufData = buf.get();
 	auto& request = connection.request;
@@ -166,6 +170,7 @@ void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocke
 	ssize_t nbytes = clientSock->write(obuf);
 	if ((nbytes == 0) || ((nbytes < 0) && (nbytes != -EAGAIN))) {
 		// error - closing connection
+		Log.error(clientSock->strerr());
 		onError(epollFd, clientSock);
 		return;
 	}
@@ -176,6 +181,9 @@ void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocke
 	else {
 		// ok - written all response
 		obuf.clear();
+	}
+	if (nbytes > 0) {
+		Log.debug(std::format("Write {} bytes to {}", nbytes, clientSock->fd()));
 	}
 }
 

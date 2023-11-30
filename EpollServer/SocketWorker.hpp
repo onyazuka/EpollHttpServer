@@ -1,3 +1,4 @@
+#pragma once
 #include "Mt/ThreadPool.hpp"
 #include <optional>
 #include <shared_mutex>
