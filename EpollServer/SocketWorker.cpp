@@ -146,16 +146,8 @@ void SocketDataHandler::onHttpRequest(int epollFd, std::shared_ptr<ISocket> clie
 	int fd = clientSock->fd();
 	// no need to check fd, because it is sequential call from onInputData
 	auto& connection = sockConnection[fd];
-	std::string srequest = request.encode();
-	//std::osyncstream(std::cout) << srequest << std::endl;
 	
-	util::web::http::HttpResponse response;
-	response.status = 200;
-	response.statusText = "OK";
-	response.version = "HTTP/1.1";
-	response.headers = request.headers;
-	response.body = request.body;
-
+	auto response = HttpServer::get().callRoute(request.url, request);
 
 	connection.obuf = OutputSocketBuffer(response.encode());
 	onHttpResponse(epollFd, clientSock);

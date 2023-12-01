@@ -108,7 +108,7 @@ int TcpServer::run() {
 	while (true) {
 		int numEvents = epoll_wait(epollFd, events, MAX_EPOLL_EVENTS, -1);
 		if (numEvents < 0) {
-			Log.error(std::format("Error on epoll {} waiting:", epollFd, strerror(errno)));
+			Log.error(std::format("Error on epoll {} waiting: {}", epollFd, strerror(errno)));
 			serverClose();
 			return -1;
 		}

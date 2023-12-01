@@ -86,12 +86,14 @@
     <MultiProcNumber>12</MultiProcNumber>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="HttpServer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProjLogger.cpp" />
     <ClCompile Include="SocketWorker.cpp" />
     <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="HttpServer.hpp" />
     <ClInclude Include="ProjLogger.hpp" />
     <ClInclude Include="SocketWorker.hpp" />
     <ClInclude Include="TcpServer.hpp" />

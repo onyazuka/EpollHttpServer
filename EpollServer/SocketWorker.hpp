@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "Socket.hpp"
 #include "Http.hpp"
+#include "HttpServer.hpp"
 
 class SocketThreadMapper;
 
