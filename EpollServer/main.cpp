@@ -4,6 +4,7 @@
 
 using namespace std;
 using namespace inet::tcp;
+using namespace util::web::http;
 
 int main()
 {
@@ -12,14 +13,26 @@ int main()
     HttpServer::get().registerRoute("/echo", [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
         std::string srequest = request.encode();
         //std::osyncstream(std::cout) << srequest << std::endl;
-        util::web::http::HttpResponse response;
-        response.status = 200;
-        response.statusText = "OK";
-        response.version = "HTTP/1.1";
-        response.headers = request.headers;
-        response.body = request.body;
+        HttpResponse response(
+            200,
+            HttpHeaders(),
+            request.body,
+            request.headers
+        );
         return response;
     });
+
+    HttpServer::get().registerRoute("/hello", [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
+        std::string srequest = request.encode();
+        //std::osyncstream(std::cout) << srequest << std::endl;
+        HttpResponse response(
+            200,
+            HttpHeaders(),
+            "<html><body><h1>Hello</h1></body></html>",
+            request.headers
+        );
+        return response;
+        });
 
     std::string serverAddr = "0.0.0.0";
     uint16_t port = 443;

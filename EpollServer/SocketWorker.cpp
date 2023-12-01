@@ -103,8 +103,8 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 		bodyStartPos = offset + pos + 4;
 	}
 	if (request.parsed() || request.parse(std::string_view((char*)bufData.data(), (char*)bufData.data() + bodyStartPos))) {
-		if (auto iter = request.headers().find("CONTENT-LENGTH"); iter != request.headers().end()) {
-			size_t contentLength = std::stoull(iter->second);
+		if (std::string sContLen = request.headers().find("CONTENT-LENGTH"); !sContLen.empty()) {
+			size_t contentLength = std::stoull(sContLen);
 			size_t dataRestLen = bufData.size() - bodyStartPos;
 			if (dataRestLen < contentLength) {
 				// waiting for the rest data
@@ -117,6 +117,7 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 		}
 		else {
 			// no body - assuming message is received
+			buf.clear(bodyStartPos);
 		}
 	}
 	else {
@@ -124,8 +125,8 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 		onError(epollFd, clientSock);
 		return;
 	}
-
 	onHttpRequest(epollFd, clientSock, request.message());
+	connection.request = util::web::http::HttpParser<util::web::http::HttpRequest>();
 }
 
 void SocketDataHandler::onError(int epollFd, std::shared_ptr<ISocket> clientSock) {
@@ -150,10 +151,10 @@ void SocketDataHandler::onHttpRequest(int epollFd, std::shared_ptr<ISocket> clie
 	auto response = HttpServer::get().callRoute(request.url, request);
 
 	connection.obuf = OutputSocketBuffer(response.encode());
-	onHttpResponse(epollFd, clientSock);
+	onHttpResponse(epollFd, clientSock, request);
 }
 
-void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock) {
+void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request) {
 	int fd = clientSock->fd();
 	if (!checkFd(clientSock)) return;
 	auto& connection = sockConnection[fd];
@@ -168,11 +169,12 @@ void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocke
 	}
 	else if ((nbytes == EAGAIN) || !(obuf.finished())) {
 		// recoverable error - will try to send again later
-		threadPool->pushTask(threadIdx, std::function([this](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { onHttpResponse(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
+		threadPool->pushTask(threadIdx, std::function([this](int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request) { onHttpResponse(epollFd, clientSock, request); return 0; }), std::move(epollFd), std::move(clientSock), request);
 	}
 	else {
 		// ok - written all response
 		obuf.clear();
+		//onCloseClient(epollFd, clientSock);
 	}
 	if (nbytes > 0) {
 		Log.debug(std::format("Write {} bytes to {}", nbytes, clientSock->fd()));
