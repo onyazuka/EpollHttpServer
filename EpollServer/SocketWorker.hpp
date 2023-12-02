@@ -26,6 +26,7 @@ public:
 	void setMapper(SocketThreadMapper* _mapper);
 	void onInputData(int epollFd, std::shared_ptr<inet::ISocket> sock);
 	void onError(int epollFd, std::shared_ptr<inet::ISocket> sock);
+	void onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock);
 	void run();
 private:
 
@@ -40,7 +41,6 @@ private:
 
 	void onCloseClient(int epollFd, std::shared_ptr<inet::ISocket> sock);
 	void onHttpRequest(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request);
-	void onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request);
 	bool checkFd(std::shared_ptr<inet::ISocket> sock);
 	QueueT tasksQueue;
 	ThreadPoolT* threadPool = nullptr;

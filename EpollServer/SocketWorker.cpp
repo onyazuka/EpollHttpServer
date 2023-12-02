@@ -151,10 +151,10 @@ void SocketDataHandler::onHttpRequest(int epollFd, std::shared_ptr<ISocket> clie
 	auto response = HttpServer::get().callRoute(request.url, request);
 
 	connection.obuf = OutputSocketBuffer(response.encode());
-	onHttpResponse(epollFd, clientSock, request);
+	onHttpResponse(epollFd, clientSock);
 }
 
-void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request) {
+void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocket> clientSock) {
 	int fd = clientSock->fd();
 	if (!checkFd(clientSock)) return;
 	auto& connection = sockConnection[fd];
@@ -169,7 +169,9 @@ void SocketDataHandler::onHttpResponse(int epollFd, std::shared_ptr<inet::ISocke
 	}
 	else if ((nbytes == EAGAIN) || !(obuf.finished())) {
 		// recoverable error - will try to send again later
-		threadPool->pushTask(threadIdx, std::function([this](int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request) { onHttpResponse(epollFd, clientSock, request); return 0; }), std::move(epollFd), std::move(clientSock), request);
+		// NOTE: now outcommented because trying to handle it in EPOLLOUT event
+		//threadPool->pushTask(threadIdx, std::function([this](int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request) { onHttpResponse(epollFd, clientSock, request); return 0; }), std::move(epollFd), std::move(clientSock), request);
+		;
 	}
 	else {
 		// ok - written all response

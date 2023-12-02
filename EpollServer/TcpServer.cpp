@@ -123,7 +123,7 @@ int TcpServer::run() {
 				for (auto errCliendFdPair : clientFds) {
 					auto& clientFd = errCliendFdPair.second;
 					int fd = clientFd->fd();
-					event.events = EPOLLIN | EPOLLET | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+					event.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
 					event.data.fd = fd;
 					if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) < 0) {
 						Log.error(std::format("Failed to add client socket to epoll instance", strerror(errno)));
@@ -165,6 +165,10 @@ int TcpServer::run() {
 					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onInputData(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
 					//Log.debug(std::format("Queue size is {} for idx {}", threadCtx.queue().size(), threadIdx));
 					//threadCtx.onInputData(epollFd, clientSock);
+				}
+				else if (events[i].events & EPOLLOUT) {
+					// continuing to write response, previously stopped on EAGAIN 
+					threadPool.pushTask(threadIdx, std::function([&threadCtx](int epollFd, std::shared_ptr<inet::ISocket> clientSock) { threadCtx.onHttpResponse(epollFd, clientSock); return 0; }), std::move(epollFd), std::move(clientSock));
 				}
 				continue;
 			}
