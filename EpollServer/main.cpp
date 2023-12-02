@@ -6,6 +6,11 @@ using namespace std;
 using namespace inet::tcp;
 using namespace util::web::http;
 
+static constexpr char CertPath[] = "/opt/chat/tls.crt";
+static constexpr char KeyPath[] = "/opt/chat/tls.key";
+
+inet::SslTcpNonblockingSocket::SslCtx inet::SslTcpNonblockingSocket::ctx(CertPath, KeyPath);
+
 int main()
 {
     initLogger(LogLevel::debug);
