@@ -31,6 +31,9 @@ public:
 private:
 
 	struct Connection {
+		// limiting max input buffer size to prevent tons of garbage data sent from user
+		static constexpr size_t MaxIbufSize = 100 * 1024;
+
 		inet::InputSocketBuffer ibuf;
 		size_t lastReadOffset = 0;
 		util::web::http::HttpParser<util::web::http::HttpRequest> request;
@@ -38,6 +41,8 @@ private:
 
 		inet::OutputSocketBuffer obuf;
 	};
+
+	bool checkInputBufData(std::string_view sv);
 
 	void onCloseClient(int epollFd, std::shared_ptr<inet::ISocket> sock);
 	void onHttpRequest(int epollFd, std::shared_ptr<inet::ISocket> clientSock, const util::web::http::HttpRequest& request);

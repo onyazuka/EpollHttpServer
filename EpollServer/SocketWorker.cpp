@@ -93,8 +93,25 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 	size_t& bodyStartPos = connection.bodyStartPos;
 
 	if (!request.parsed()) {
+		if (bufData.size() < 7) {
+			// min data size to check - shortest method "GET" + "\r\n\r\n" == 7, and longest method "OPTIONS" == 7, so it is sufficient to check
+			return;
+		}
+		if (offset == 0) {
+			if (!checkInputBufData(std::string_view((char*)bufData.data(), (char*)bufData.data() + 7))) {
+				Log.warning(std::format("Invalid non-http data from {}", fd));
+				onError(epollFd, clientSock);
+				return;
+			}
+		}
+		if (bufData.size() > Connection::MaxIbufSize) {
+			Log.warning(std::format("Invalid non-http data from {}: suspicious data of too large size", fd));
+			onError(epollFd, clientSock);
+			return;
+		}
 		//Log.debug(std::format("data = {}, offset = {}, size = {}", (void*)bufData.data(), offset, bufData.size()));
-		auto pos = std::string_view((char*)bufData.data() + offset, (char*)bufData.data() + bufData.size()).find("\r\n\r\n");
+		auto bufSv = std::string_view((char*)bufData.data() + offset, (char*)bufData.data() + bufData.size());
+		auto pos = bufSv.find("\r\n\r\n");
 		if (pos == std::string::npos) {
 			Log.warning(std::format("Invalid non-http data from {}", fd));
 			onError(epollFd, clientSock);
@@ -132,6 +149,25 @@ void SocketDataHandler::onInputData(int epollFd, std::shared_ptr<ISocket> client
 void SocketDataHandler::onError(int epollFd, std::shared_ptr<ISocket> clientSock) {
 	Log.error(std::format("Closing connection from server with client {}", clientSock->fd()));
 	onCloseClient(epollFd, clientSock);
+}
+
+bool SocketDataHandler::checkInputBufData(std::string_view sv) {
+	if (
+		sv.size() >= 3 && sv.substr(0, 3) == "GET" ||
+		sv.size() >= 4 && sv.substr(0, 4) == "HEAD" ||
+		sv.size() >= 4 && sv.substr(0, 4) == "POST" ||
+		sv.size() >= 3 && sv.substr(0, 3) == "PUT" ||
+		sv.size() >= 6 && sv.substr(0, 6) == "DELETE" ||
+		sv.size() >= 7 && sv.substr(0, 7) == "CONNECT" ||
+		sv.size() >= 7 && sv.substr(0, 7) == "OPTIONS" ||
+		sv.size() >= 5 && sv.substr(0, 5) == "TRACE" ||
+		sv.size() >= 5 && sv.substr(0, 5) == "PATCH"
+		)
+	{
+		return true;
+	}
+	return false;
+
 }
 
 void SocketDataHandler::onCloseClient(int epollFd, std::shared_ptr<ISocket> clientSock) {
