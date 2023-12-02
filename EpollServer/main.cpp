@@ -10,7 +10,7 @@ int main()
 {
     initLogger(LogLevel::debug);
     
-    HttpServer::get().registerRoute("/echo", [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
+    HttpServer::get().registerRoute("/echo", Method::GET, [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
         std::string srequest = request.encode();
         //std::osyncstream(std::cout) << srequest << std::endl;
         HttpResponse response(
@@ -22,7 +22,7 @@ int main()
         return response;
     });
 
-    HttpServer::get().registerRoute("/hello", [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
+    HttpServer::get().registerRoute("/hello", Method::GET, [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
         std::string srequest = request.encode();
         //std::osyncstream(std::cout) << srequest << std::endl;
         HttpResponse response(
