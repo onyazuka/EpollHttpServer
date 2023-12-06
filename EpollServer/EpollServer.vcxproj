@@ -88,12 +88,14 @@
   <ItemGroup>
     <ClCompile Include="HttpServer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MessengerDb.cpp" />
     <ClCompile Include="ProjLogger.cpp" />
     <ClCompile Include="SocketWorker.cpp" />
     <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HttpServer.hpp" />
+    <ClInclude Include="MessengerDb.hpp" />
     <ClInclude Include="ProjLogger.hpp" />
     <ClInclude Include="SocketWorker.hpp" />
     <ClInclude Include="TcpServer.hpp" />
@@ -104,7 +106,7 @@
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <LibraryDependencies>ssl;crypto</LibraryDependencies>
+      <LibraryDependencies>ssl;crypto;mysqlcppconn</LibraryDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -114,7 +116,7 @@
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <LibraryDependencies>ssl;crypto</LibraryDependencies>
+      <LibraryDependencies>ssl;crypto;mysqlcppconn</LibraryDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

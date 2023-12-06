@@ -6,6 +6,7 @@
 #include "Socket.hpp"
 #include "Http.hpp"
 #include "HttpServer.hpp"
+#include "MessengerDb.hpp"
 
 class SocketThreadMapper;
 
