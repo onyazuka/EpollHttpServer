@@ -4,3 +4,6 @@
 [submodule "cpputils_web"]
 	path = cpputils_web
 	url = https://github.com/onyazuka/cpputils_web.git
+[submodule "https_epoll_server"]
+	path = https_epoll_server
+	url = https://github.com/onyazuka/https_epoll_server.git
