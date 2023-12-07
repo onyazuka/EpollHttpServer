@@ -2,6 +2,90 @@
 #include <format>
 
 using namespace db;
+using namespace util::web::json;
+
+User::User(size_t id, std::string username, const std::string& pwdHash, const std::string& authToken)
+    : id{id}, username{username}, pwdHash{pwdHash}, authToken{authToken}
+{
+    ;
+} 
+
+User::User(size_t id)
+    : id{id}
+{
+    ;
+}
+
+AddressBook::AddressBook(size_t id, size_t whoId, size_t withId)
+    : id{ id }, whoId{ whoId }, withId{ withId }
+{
+    ;
+}
+
+AddressBook::AddressBook(size_t id)
+    : id{ id }
+{
+    ;
+}
+
+Chat::Chat(size_t id, size_t whoId, size_t withId)
+    : id{id}, whoId{whoId}, withId{withId}
+{
+    ;
+}
+
+Chat::Chat(size_t id) 
+    : id{id}
+{
+    ;
+}
+
+TxtMessage::TxtMessage(size_t id, size_t chatId, size_t whoId, const std::string& message, const std::string& timestamp)
+    : id{ id }, chatId{ chatId }, whoId{ whoId }, message{ message }, timestamp{ timestamp }
+{
+    ;
+}
+
+TxtMessage::TxtMessage(size_t id) 
+    : id{id}
+{
+    ;
+}
+
+util::web::json::ObjNode User::toObjNode() const {
+    return ObjNode({
+        {"id", (int64_t)id},
+        {"username", username},
+        {"pwdHash", pwdHash},
+        {"authToken", authToken}
+        });
+}
+
+util::web::json::ObjNode AddressBook::toObjNode() const {
+    return ObjNode({
+       {"id", (int64_t)id},
+       {"whoId", (int64_t)whoId},
+       {"withId", (int64_t)withId}
+        });
+}
+
+util::web::json::ObjNode Chat::toObjNode() const {
+    return ObjNode({
+       {"id", (int64_t)id},
+       {"whoId", (int64_t)whoId},
+       {"withId", (int64_t)withId}
+        });
+}
+
+util::web::json::ObjNode TxtMessage::toObjNode() const {
+    return ObjNode({
+       {"id", (int64_t)id},
+       {"chatId", (int64_t)chatId},
+       {"whoId", (int64_t)whoId},
+        {"message", message},
+        {"timestamp", timestamp}
+        });
+}
 
 MessengerDb::MessengerDb(const std::string& url, const std::string& username, const std::string& pwd, const std::string& schema)
 	: db{new DbMysql()}
@@ -40,6 +124,17 @@ std::pair<MessengerDb::Error, bool> MessengerDb::loginUser(size_t id, const std:
     }
 }
 
+std::pair<MessengerDb::Error, std::vector<User>> MessengerDb::getUsers() {
+    try {
+        db->query("select * from User");
+        return { Error::Ok, vecTuples2vecStructs<User>(db->result<size_t, std::string, std::string, std::string>({1,2,3,4})) };
+    }
+    catch (std::exception& ex) {
+        std::cout << ex.what() << std::endl;
+        return { Error::InvalidQuery, {} };
+    }
+}
+
 std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addContactToAddressBook(size_t whoId, size_t withId) {
     if (whoId == withId) {
         return { Error::InvalidQuery, std::nullopt };
@@ -60,10 +155,21 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addContactToAd
     }
 }
 
-std::pair<MessengerDb::Error, std::vector<std::tuple<size_t, size_t, size_t>>> MessengerDb::getContactsFromAddressBook(size_t forWhoId) {
+std::pair<MessengerDb::Error, std::vector<AddressBook>> MessengerDb::getAddressBooks() {
+    try {
+        db->query("select * from AddressBook");
+        return { Error::Ok, vecTuples2vecStructs<AddressBook>(db->result<size_t, size_t, size_t>({1,2,3})) };
+    }
+    catch (std::exception& ex) {
+        std::cout << ex.what() << std::endl;
+        return { Error::InvalidQuery, {} };
+    }
+}
+
+std::pair<MessengerDb::Error, std::vector<AddressBook>> MessengerDb::getContactsFromAddressBook(size_t forWhoId) {
     try {
         db->query(std::format("select * from AddressBook where whoId={}", forWhoId));
-        return { Error::Ok, db->result<size_t,size_t,size_t>({1,2,3}) };
+        return { Error::Ok, vecTuples2vecStructs<AddressBook>(db->result<size_t,size_t,size_t>({1,2,3})) };
     }
     catch (std::exception& ex) {
         std::cout << ex.what() << std::endl;
@@ -119,14 +225,25 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addChat(size_t
     }
 }
 
-std::pair<MessengerDb::Error, std::vector<std::tuple<size_t, size_t, size_t>>> MessengerDb::getChats(size_t forWhoId) {
+std::pair<MessengerDb::Error, std::vector<Chat>> MessengerDb::getChatsForId(size_t forWhoId) {
     try {
         db->query(std::format("select * from Chat where whoId={}", forWhoId));
         std::vector<std::tuple<size_t, size_t, size_t>> res1 = db->result<size_t, size_t, size_t>({ 1,2,3 });
         db->query(std::format("select * from Chat where withId={}", forWhoId));
         std::vector<std::tuple<size_t, size_t, size_t>> res2 = db->result<size_t, size_t, size_t>({ 1,2,3 });
         res1.insert(res1.end(), res2.begin(), res2.end());
-        return { Error::Ok, res1 };
+        return { Error::Ok, vecTuples2vecStructs<Chat>(std::move(res1)) };
+    }
+    catch (std::exception& ex) {
+        std::cout << ex.what() << std::endl;
+        return { Error::InvalidQuery, {} };
+    }
+}
+
+std::pair<MessengerDb::Error, std::vector<Chat>> MessengerDb::getChats() {
+    try {
+        db->query("select * from Chat");
+        return { Error::Ok, vecTuples2vecStructs<Chat>(db->result<size_t,size_t,size_t>({1,2,3})) };
     }
     catch (std::exception& ex) {
         std::cout << ex.what() << std::endl;
@@ -192,10 +309,10 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteTxtMessage(size_t id) {
     }
 }
 
-std::pair<MessengerDb::Error, std::vector<std::tuple<size_t, size_t, size_t, std::string, std::string>>> MessengerDb::getTxtMessagesForChat(size_t chatId) {
+std::pair<MessengerDb::Error, std::vector<TxtMessage>> MessengerDb::getTxtMessagesForChat(size_t chatId) {
     try {
         db->query(std::format("select * from TxtMessage where chatId={}", chatId));
-        return { Error::Ok, db->result<size_t, size_t, size_t, std::string, std::string>({ 1,2,3,4,5 }) };
+        return { Error::Ok, vecTuples2vecStructs<TxtMessage>(db->result<size_t, size_t, size_t, std::string, std::string>({ 1,2,3,4,5 })) };
     }
     catch (std::exception& ex) {
         std::cout << ex.what() << std::endl;

@@ -1,6 +1,8 @@
 #include "ProjLogger.hpp"
 #include "TcpServer.hpp"
 #include "test/testHttp.hpp"
+#include "MessengerDb.hpp"
+#include "Api.hpp"
 
 using namespace std;
 using namespace inet::tcp;
@@ -15,29 +17,8 @@ int main()
 {
     initLogger(LogLevel::debug);
     
-    HttpServer::get().registerRoute("/echo", Method::GET, [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
-        std::string srequest = request.encode();
-        //std::osyncstream(std::cout) << srequest << std::endl;
-        HttpResponse response(
-            200,
-            HttpHeaders(),
-            request.body,
-            request.headers
-        );
-        return response;
-    });
-
-    HttpServer::get().registerRoute("/hello", Method::GET, [](const util::web::http::HttpRequest& request) -> util::web::http::HttpResponse {
-        std::string srequest = request.encode();
-        //std::osyncstream(std::cout) << srequest << std::endl;
-        HttpResponse response(
-            200,
-            HttpHeaders(),
-            "<html><body><h1>Hello</h1></body></html>",
-            request.headers
-        );
-        return response;
-        });
+    auto pdb = std::make_unique<db::MessengerDb>("tcp://127.0.0.1:3306", "onyazuka", "5051", "messenger");
+    Api api(std::move(pdb));
 
     std::string serverAddr = "0.0.0.0";
     uint16_t port = 443;

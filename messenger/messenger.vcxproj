@@ -87,10 +87,14 @@
     <MultiProcNumber>12</MultiProcNumber>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="Api.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MessengerDb.cpp" />
+    <ClCompile Include="SharedCache.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Api.hpp" />
+    <ClInclude Include="SharedCache.hpp" />
     <ClInclude Include="MessengerDb.hpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
