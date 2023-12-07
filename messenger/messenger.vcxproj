@@ -37,7 +37,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{85c9974e-2710-4b0f-a69a-5df29c6b4aea}</ProjectGuid>
     <Keyword>Linux</Keyword>
-    <RootNamespace>EpollServer</RootNamespace>
+    <RootNamespace>messenger</RootNamespace>
     <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
     <ApplicationType>Linux</ApplicationType>
     <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
@@ -76,6 +76,7 @@
   <ImportGroup Label="Shared">
     <Import Project="..\cpputils\cpputils.vcxitems" Label="Shared" />
     <Import Project="..\cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems" Label="Shared" />
+    <Import Project="..\https_epoll_server\https_epoll_server.vcxitems" Label="Shared" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
@@ -86,19 +87,11 @@
     <MultiProcNumber>12</MultiProcNumber>
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="HttpServer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MessengerDb.cpp" />
-    <ClCompile Include="ProjLogger.cpp" />
-    <ClCompile Include="SocketWorker.cpp" />
-    <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="HttpServer.hpp" />
     <ClInclude Include="MessengerDb.hpp" />
-    <ClInclude Include="ProjLogger.hpp" />
-    <ClInclude Include="SocketWorker.hpp" />
-    <ClInclude Include="TcpServer.hpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

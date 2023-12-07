@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32526.322
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EpollServer", "EpollServer\EpollServer.vcxproj", "{85C9974E-2710-4B0F-A69A-5DF29C6B4AEA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "messenger", "messenger\messenger.vcxproj", "{85C9974E-2710-4B0F-A69A-5DF29C6B4AEA}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpputils", "cpputils\cpputils.vcxitems", "{F22D2890-D1B9-4E87-9903-44945D195DFD}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpputils_web_sh", "cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems", "{F3A7F892-7525-412A-92AD-5E9DD92015AC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "https_epoll_server", "https_epoll_server\https_epoll_server.vcxitems", "{A93A3EAA-F83A-45F5-8032-40E5882D328E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +57,8 @@ Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		cpputils\cpputils.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
 		cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
+		https_epoll_server\https_epoll_server.vcxitems*{85c9974e-2710-4b0f-a69a-5df29c6b4aea}*SharedItemsImports = 4
+		https_epoll_server\https_epoll_server.vcxitems*{a93a3eaa-f83a-45f5-8032-40e5882d328e}*SharedItemsImports = 9
 		cpputils\cpputils.vcxitems*{f22d2890-d1b9-4e87-9903-44945d195dfd}*SharedItemsImports = 9
 		cpputils_web\cpputils_web_sh\cpputils_web_sh.vcxitems*{f3a7f892-7525-412a-92ad-5e9dd92015ac}*SharedItemsImports = 9
 	EndGlobalSection
