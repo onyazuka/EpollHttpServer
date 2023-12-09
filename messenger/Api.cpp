@@ -76,7 +76,7 @@ util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto withId = (size_t)json.as<int64_t>("withId");
+        auto withId = json.as<size_t>("withId");
         auto [err, optAddrBookEntryId] = db->addContactToAddressBook(userId, withId);
         if (err != db::MessengerDb::Error::Ok) {
             throw std::invalid_argument(std::format("can't add contact for id {}: err = {}", userId, (int)err));
@@ -107,7 +107,7 @@ util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequ
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto contactId = (size_t)json.as<int64_t>("id");
+        auto contactId = json.as<size_t>("id");
         if (!sharedCache.contactDelete(contactId, userId)) {
             return response(request, 400);
         }
@@ -127,7 +127,7 @@ util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& r
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto withId = (size_t)json.as<int64_t>("withId");
+        auto withId = json.as<size_t>("withId");
         auto [err, optChatEntryId] = db->addChat(userId, withId);
         if (err != db::MessengerDb::Error::Ok) {
             throw std::invalid_argument(std::format("can't add chat for id {}: err = {}", userId, (int)err));
@@ -158,7 +158,7 @@ util::web::http::HttpResponse Api::chatDelete(const util::web::http::HttpRequest
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto chatId = (size_t)json.as<int64_t>("id");
+        auto chatId = json.as<size_t>("id");
         if (!sharedCache.chatDelete(chatId, userId)) {
             return response(request, 400);
         }
@@ -178,10 +178,12 @@ util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequ
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto chatId = (size_t)json.as<int64_t>("chatId");
-        auto whoId = (size_t)json.as<int64_t>("whoId");
+        auto chatId = json.as<size_t>("chatId");
         std::string message = json.as<std::string>("message");
-        auto [err, optId] = db->addTxtMessage(chatId, whoId, message);
+        if (!sharedCache.chatsGetForId(userId).contains(db::Chat(chatId))) {
+            return response(request, 403);
+        }
+        auto [err, optId] = db->addTxtMessage(chatId, userId, message);
         if (err != db::MessengerDb::Error::Ok) {
             return response(request, 400);
         }
@@ -197,7 +199,10 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto chatId = (size_t)json.as<int64_t>("id");
+        auto chatId = json.as<size_t>("id");
+        if (!sharedCache.chatsGetForId(userId).contains(db::Chat(chatId))) {
+            return response(request, 403);
+        }
         auto [err, messages] = db->getTxtMessagesForChat(chatId);
         if (err != db::MessengerDb::Error::Ok) {
             return response(request, 400);

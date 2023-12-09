@@ -1,5 +1,6 @@
 #include "MessengerDb.hpp"
 #include <format>
+#include <ProjLogger.hpp>
 
 using namespace db;
 using namespace util::web::json;
@@ -108,7 +109,7 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::registerUser(c
         }
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, std::nullopt };
     }
 }
@@ -119,7 +120,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::loginUser(size_t id, const std:
         return { Error::Ok, db->result<uint64_t>() };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -130,7 +131,7 @@ std::pair<MessengerDb::Error, std::vector<User>> MessengerDb::getUsers() {
         return { Error::Ok, vecTuples2vecStructs<User>(db->result<size_t, std::string, std::string, std::string>({1,2,3,4})) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
@@ -150,7 +151,7 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addContactToAd
         }
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, std::nullopt };
     }
 }
@@ -161,7 +162,7 @@ std::pair<MessengerDb::Error, std::vector<AddressBook>> MessengerDb::getAddressB
         return { Error::Ok, vecTuples2vecStructs<AddressBook>(db->result<size_t, size_t, size_t>({1,2,3})) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
@@ -172,7 +173,7 @@ std::pair<MessengerDb::Error, std::vector<AddressBook>> MessengerDb::getContacts
         return { Error::Ok, vecTuples2vecStructs<AddressBook>(db->result<size_t,size_t,size_t>({1,2,3})) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
@@ -184,7 +185,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteContactFromAddressBook(si
         else return { Error::NotExists, false };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -196,7 +197,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteContactFromAddressBook(si
         else return { Error::NotExists, false };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -220,7 +221,7 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addChat(size_t
         }
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, std::nullopt };
     }
 }
@@ -235,7 +236,7 @@ std::pair<MessengerDb::Error, std::vector<Chat>> MessengerDb::getChatsForId(size
         return { Error::Ok, vecTuples2vecStructs<Chat>(std::move(res1)) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
@@ -246,7 +247,7 @@ std::pair<MessengerDb::Error, std::vector<Chat>> MessengerDb::getChats() {
         return { Error::Ok, vecTuples2vecStructs<Chat>(db->result<size_t,size_t,size_t>({1,2,3})) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
@@ -261,7 +262,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteChat(size_t whoId, size_t
         else return { Error::NotExists, false };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -273,7 +274,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteChat(size_t id) {
         else return { Error::NotExists, false };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -292,7 +293,7 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addTxtMessage(
         }
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, std::nullopt };
     }
 }
@@ -304,7 +305,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteTxtMessage(size_t id) {
         else return { Error::NotExists, false };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, false };
     }
 }
@@ -315,7 +316,7 @@ std::pair<MessengerDb::Error, std::vector<TxtMessage>> MessengerDb::getTxtMessag
         return { Error::Ok, vecTuples2vecStructs<TxtMessage>(db->result<size_t, size_t, size_t, std::string, std::string>({ 1,2,3,4,5 })) };
     }
     catch (std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        Log.error(ex.what());
         return { Error::InvalidQuery, {} };
     }
 }
