@@ -41,7 +41,7 @@ Chat::Chat(size_t id)
     ;
 }
 
-TxtMessage::TxtMessage(size_t id, size_t chatId, size_t whoId, const std::string& message, const std::string& timestamp)
+TxtMessage::TxtMessage(size_t id, size_t chatId, size_t whoId, const std::string& message, size_t timestamp)
     : id{ id }, chatId{ chatId }, whoId{ whoId }, message{ message }, timestamp{ timestamp }
 {
     ;
@@ -84,7 +84,7 @@ util::web::json::ObjNode TxtMessage::toObjNode() const {
        {"chatId", (int64_t)chatId},
        {"whoId", (int64_t)whoId},
         {"message", message},
-        {"timestamp", timestamp}
+        {"ts", (int64_t)timestamp}
         });
 }
 
@@ -211,6 +211,11 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addChat(size_t
         std::swap(whoId, withId);
     }
     try {
+        db->query(std::format("select count(*) from AddressBook where (whoId={} and withId={}) or (whoId={} and withId={})", whoId, withId, withId, whoId));
+        // whoId and withId should be mutual contacts in AddressBook
+        if (db->result<uint64_t>() != 2) {
+            return { Error::InvalidQuery, std::nullopt };
+        }
         int sz = db->modify(std::format("insert into Chat values (NULL, {}, {})", whoId, withId));
         if (sz) {
             db->query("select LAST_INSERT_ID()");
@@ -279,11 +284,11 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteChat(size_t id) {
     }
 }
 
-std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addTxtMessage(size_t chatId, size_t whoId, const std::string& text) {
+std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addTxtMessage(size_t chatId, size_t whoId, const std::string& text, size_t timestamp) {
     try {
         // inserting only if whoId matches to chatId whoId or withId
         //std::string query = std::format("insert into TxtMessage select NULL, {}, {}, '{}', NOW() where (select COUNT(*) from Chat where chatId={} and whoId={}) > 0 or (select COUNT(*) from Chat where chatId={} and withId={}) > 0", chatId, whoId, SEC(text), chatId, whoId, chatId, whoId);
-        int sz = db->modify(std::format("insert into TxtMessage select NULL, {}, {}, '{}', UTC_TIMESTAMP() where (select COUNT(*) from Chat where id={} and whoId={}) > 0 or (select COUNT(*) from Chat where id={} and withId={}) > 0", chatId, whoId, SEC(text), chatId, whoId, chatId, whoId));
+        int sz = db->modify(std::format("insert into TxtMessage select NULL, {}, {}, '{}', {} where (select COUNT(*) from Chat where id={} and whoId={}) > 0 or (select COUNT(*) from Chat where id={} and withId={}) > 0", chatId, whoId, SEC(text), timestamp, chatId, whoId, chatId, whoId));
         if (sz) {
             db->query("select LAST_INSERT_ID()");
             return { Error::Ok, db->result<uint64_t>() };
@@ -313,7 +318,7 @@ std::pair<MessengerDb::Error, bool> MessengerDb::deleteTxtMessage(size_t id) {
 std::pair<MessengerDb::Error, std::vector<TxtMessage>> MessengerDb::getTxtMessagesForChat(size_t chatId) {
     try {
         db->query(std::format("select * from TxtMessage where chatId={}", chatId));
-        return { Error::Ok, vecTuples2vecStructs<TxtMessage>(db->result<size_t, size_t, size_t, std::string, std::string>({ 1,2,3,4,5 })) };
+        return { Error::Ok, vecTuples2vecStructs<TxtMessage>(db->result<size_t, size_t, size_t, std::string, size_t>({ 1,2,3,4,5 })) };
     }
     catch (std::exception& ex) {
         Log.error(ex.what());

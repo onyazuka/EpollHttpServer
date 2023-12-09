@@ -22,6 +22,14 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     
     HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request) { return userRegisterOrLogin(request); });
     HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request) { return userLogout(request); });
+    HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request) { return contactAdd(request); });
+    HttpServer::get().registerRoute("/contact", Method::GET, [this](const util::web::http::HttpRequest& request) { return contactsGetForId(request); });
+    HttpServer::get().registerRoute("/contact", Method::DELETE, [this](const util::web::http::HttpRequest& request) { return contactDelete(request); });
+    HttpServer::get().registerRoute("/chat", Method::POST, [this](const util::web::http::HttpRequest& request) { return chatAdd(request); });
+    HttpServer::get().registerRoute("/chat", Method::GET, [this](const util::web::http::HttpRequest& request) { return chatsGetForId(request); });
+    HttpServer::get().registerRoute("/chat", Method::DELETE, [this](const util::web::http::HttpRequest& request) { return chatDelete(request); });
+    HttpServer::get().registerRoute("/message", Method::POST, [this](const util::web::http::HttpRequest& request) { return txtMessageAdd(request); });
+    HttpServer::get().registerRoute("/message", Method::GET, [this](const util::web::http::HttpRequest& request) { return txtMessagesGetForChatId(request); });
 }
 
 util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::HttpRequest& request) {
@@ -46,7 +54,7 @@ util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::Ht
             ;
         }
         HttpHeaders headers;
-        headers.add("SET-COOKIE", std::format("userId={}\nSET-COOKIE:authToken={}", userId, authToken));
+        headers.add("Set-Cookie", std::format("userId={}; path=/\nSet-Cookie:authToken={}; path=/", userId, authToken));
         return response(request, 200, std::move(headers));
     }
     catch (std::exception& ex) {
@@ -55,20 +63,11 @@ util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::Ht
     }
 }
 
-util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {
-     return HttpResponse(
-        code,
-        std::move(headers),
-        std::move(body),
-        request.headers
-    );
-}
-
 util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest& request) {
     //if (!isUserAuthenticated(request)) return notAuth(request);
     NotAuthGuard;
     HttpHeaders headers;
-    headers.add("SET-COOKIE", std::format("userId=deleted; expires=Thu, 01 Jan 1970 00:00:00 GMT\nSET-COOKIE:authToken=deleted; expires=Thu, 01 Jan 1970 00:00:00 GMT"));
+    headers.add("Set-Cookie", std::format("userId=deleted; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT\nSet-Cookie:authToken=deleted; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"));
     return response(request, 200, std::move(headers));
 }
 
@@ -82,7 +81,10 @@ util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest
             throw std::invalid_argument(std::format("can't add contact for id {}: err = {}", userId, (int)err));
         }
         sharedCache.contactAdd({ optAddrBookEntryId.value(), userId, withId });
-        return response(request, 200);
+        HttpHeaders headers;
+        headers.add("Content-Type", "application/json");
+        db::AddressBook addrBook(optAddrBookEntryId.value(), userId, withId);
+        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(addrBook.toObjNode())));
     }
     catch (std::exception& ex) {
         Log.info(ex.what());
@@ -99,8 +101,8 @@ util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpR
         //resArr.cont().push_back()
     }
     HttpHeaders headers;
-    headers.add("CONTENT-TYPE", "application/json");
-    return HttpResponse(200, std::move(headers), JsonEncoder().encode(Node(resArr)));
+    headers.add("Content-Type", "application/json");
+    return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
 }
 
 util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequest& request) {
@@ -133,7 +135,10 @@ util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& r
             throw std::invalid_argument(std::format("can't add chat for id {}: err = {}", userId, (int)err));
         }
         sharedCache.chatAdd({ optChatEntryId.value(), userId, withId });
-        return response(request, 200);
+        HttpHeaders headers;
+        headers.add("Content-Type", "application/json");
+        db::Chat chat(optChatEntryId.value(), userId, withId);
+        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(chat.toObjNode())));
     }
     catch (std::exception& ex) {
         Log.info(ex.what());
@@ -150,8 +155,8 @@ util::web::http::HttpResponse Api::chatsGetForId(const util::web::http::HttpRequ
         //resArr.cont().push_back()
     }
     HttpHeaders headers;
-    headers.add("CONTENT-TYPE", "application/json");
-    return HttpResponse(200, std::move(headers), JsonEncoder().encode(Node(resArr)));
+    headers.add("Content-Type", "application/json");
+    return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
 }
 
 util::web::http::HttpResponse Api::chatDelete(const util::web::http::HttpRequest& request) {
@@ -183,11 +188,15 @@ util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequ
         if (!sharedCache.chatsGetForId(userId).contains(db::Chat(chatId))) {
             return response(request, 403);
         }
-        auto [err, optId] = db->addTxtMessage(chatId, userId, message);
+        size_t ts = tsMs();
+        auto [err, optId] = db->addTxtMessage(chatId, userId, message, ts);
         if (err != db::MessengerDb::Error::Ok) {
             return response(request, 400);
         }
-        return response(request, 200);
+        HttpHeaders headers;
+        headers.add("Content-Type", "application/json");
+        db::TxtMessage msg(optId.value(), chatId, userId, message, ts);
+        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(msg.toObjNode())));
     }
     catch (std::exception& ex) {
         Log.info(ex.what());
@@ -199,7 +208,7 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
-        auto chatId = json.as<size_t>("id");
+        auto chatId = json.as<size_t>("chatId");
         if (!sharedCache.chatsGetForId(userId).contains(db::Chat(chatId))) {
             return response(request, 403);
         }
@@ -213,13 +222,23 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
             //resArr.cont().push_back()
         }
         HttpHeaders headers;
-        headers.add("CONTENT-TYPE", "application/json");
-        return HttpResponse(200, std::move(headers), JsonEncoder().encode(Node(resArr)));
+        headers.add("Content-Type", "application/json");
+        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
     }
     catch (std::exception& ex) {
         Log.info(ex.what());
         return response(request, 400);
     }
+}
+
+util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {
+    Log.info(std::format("Sending response {}", code));
+    return HttpResponse(
+        code,
+        std::move(headers),
+        std::move(body),
+        request.headers
+    );
 }
 
 util::web::http::HttpResponse Api::echo(const util::web::http::HttpRequest& request) {
@@ -259,7 +278,7 @@ void Api::onInit() {
 
 std::pair<bool, size_t> Api::userIsAuthenticated(const util::web::http::HttpRequest& request) {
     auto cookies = request.headers.cookies();
-    std::string userId = 0;
+    std::string userId;
     std::string authToken;
     if (auto iter = cookies.find("userId"); iter != cookies.end()) {
         userId = iter->second;
@@ -267,7 +286,8 @@ std::pair<bool, size_t> Api::userIsAuthenticated(const util::web::http::HttpRequ
     if (auto iter = cookies.find("authToken"); iter != cookies.end()) {
         authToken = iter->second;
     }
-    return { !(userId.empty() || authToken.empty() || !sharedCache.userIsAuthentificated(std::stoull(userId), authToken)), std::stoull(userId) };
+    if (userId.empty() || authToken.empty()) return { false, 0 };
+    return { sharedCache.userIsAuthentificated(std::stoull(userId), authToken), std::stoull(userId) };
 }
 
 std::string Api::generateAuthToken(const std::string& username, const std::string& pwdHash) {

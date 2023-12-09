@@ -51,13 +51,13 @@ namespace db {
 	};
 
 	struct TxtMessage {
-		TxtMessage(size_t id, size_t chatId, size_t whoId, const std::string& message, const std::string& timestamp);
+		TxtMessage(size_t id, size_t chatId, size_t whoId, const std::string& message, size_t timestamp);
 		TxtMessage(size_t id);
 		size_t id;
 		size_t chatId;
 		size_t whoId;
 		std::string message;
-		std::string timestamp;
+		size_t timestamp;
 		util::web::json::ObjNode toObjNode() const;
 		inline bool operator==(const TxtMessage& other) const { return id == other.id; }
 	};
@@ -102,7 +102,7 @@ namespace db {
 		// returns true if chat was deleted
 		std::pair<Error, bool> deleteChat(size_t id);
 		// returns id of new message
-		std::pair<Error, std::optional<size_t>> addTxtMessage(size_t chatId, size_t whoId, const std::string& text);
+		std::pair<Error, std::optional<size_t>> addTxtMessage(size_t chatId, size_t whoId, const std::string& text, size_t timestamp);
 		// returns true if txtMessage was deleted
 		std::pair<Error, bool> deleteTxtMessage(size_t id);
 		// returns vector of txt message fields
