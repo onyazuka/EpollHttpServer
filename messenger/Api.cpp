@@ -233,7 +233,7 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
 }
 
 util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request) {
-    //NotAuthGuard;
+    NotAuthGuard;
     return HttpServer::get().getEntireFile(request.url, request);
     //return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
 }
