@@ -30,6 +30,7 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     HttpServer::get().registerRoute("/chat", Method::DELETE, [this](const util::web::http::HttpRequest& request) { return chatDelete(request); });
     HttpServer::get().registerRoute("/message", Method::POST, [this](const util::web::http::HttpRequest& request) { return txtMessageAdd(request); });
     HttpServer::get().registerRoute("/message", Method::GET, [this](const util::web::http::HttpRequest& request) { return txtMessagesGetForChatId(request); });
+    HttpServer::get().registerRoute("/storage*", Method::GET, [this](const util::web::http::HttpRequest& request) { return storageGet(request); });
 }
 
 util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::HttpRequest& request) {
@@ -229,6 +230,11 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
         Log.info(ex.what());
         return response(request, 400);
     }
+}
+
+util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request) {
+    //NotAuthGuard;
+    return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
 }
 
 util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {

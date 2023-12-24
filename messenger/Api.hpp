@@ -128,6 +128,8 @@ public:
 	*/
 	util::web::http::HttpResponse txtMessagesGetForChatId(const util::web::http::HttpRequest& request);
 
+	util::web::http::HttpResponse storageGet(const util::web::http::HttpRequest& request);
+
 	util::web::http::HttpResponse echo(const util::web::http::HttpRequest& request);
 	util::web::http::HttpResponse hello(const util::web::http::HttpRequest& request);
 private:
