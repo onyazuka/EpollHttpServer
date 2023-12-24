@@ -234,7 +234,8 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
 
 util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request) {
     //NotAuthGuard;
-    return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
+    return HttpServer::get().getEntireFile(request.url, request);
+    //return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
 }
 
 util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {

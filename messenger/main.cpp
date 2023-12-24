@@ -13,12 +13,15 @@ static constexpr char KeyPath[] = "/opt/chat/tls.key";
 
 inet::SslTcpNonblockingSocket::SslCtx inet::SslTcpNonblockingSocket::ctx(CertPath, KeyPath);
 
-int main()
+int main(int argc, char* argv[])
 {
+    assert(argc == 2);
     initLogger(LogLevel::debug);
     
     auto pdb = std::make_unique<db::MessengerDb>("tcp://127.0.0.1:3306", "onyazuka", "5051", "messenger");
     Api api(std::move(pdb));
+
+    HttpServer::get().setRoot(argv[1]);
 
     std::string serverAddr = "0.0.0.0";
     uint16_t port = 443;
