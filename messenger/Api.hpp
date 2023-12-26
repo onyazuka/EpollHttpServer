@@ -45,7 +45,7 @@ public:
 					"username": "..."
 				}
 		output:
-			unsets cookies 'userId' and 'authToken'
+			userId - number
 	*/
 	util::web::http::HttpResponse userFind(const util::web::http::HttpRequest& request);
 
@@ -69,7 +69,10 @@ public:
 		input:
 			empty(cookies)
 		output:
-			json array of address books
+			{
+				contacts: [],
+				users: [id1,id2,...,idN,...],
+			}
 	*/
 	util::web::http::HttpResponse contactsGetForId(const util::web::http::HttpRequest& request);
 

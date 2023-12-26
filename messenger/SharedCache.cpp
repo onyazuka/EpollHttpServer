@@ -47,6 +47,17 @@ std::optional<size_t> SharedCache::userFind(const std::string& username) {
 	return std::nullopt;
 }
 
+SharedCache::UsersV SharedCache::usersFindById(const std::unordered_set<size_t>& ids) {
+	std::shared_lock<std::shared_mutex> lck{ usersMtx };
+	UsersV users;
+	for (auto id : ids) {
+		if (auto iter = user2Id.find(id); iter != user2Id.end()) {
+			users.insert(iter->second);
+		}
+	}
+	return users;
+}
+
 std::pair<size_t, std::string> SharedCache::userLogin(const std::string& username, const std::string& pwdHash) {
 	std::shared_lock<std::shared_mutex> lck{ usersMtx };
 	if (auto iter = user2Username.find(username); iter == user2Username.end()) {

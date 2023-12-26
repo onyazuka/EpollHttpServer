@@ -21,6 +21,7 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     HttpServer::get().registerRoute("/hello", Method::GET, [this](const util::web::http::HttpRequest& request) { return hello(request); });
     
     HttpServer::get().registerRoute("/*", Method::OPTIONS, [this](const util::web::http::HttpRequest& request) { return onOptions(request); });
+    HttpServer::get().registerRoute("/user", Method::GET, [this](const util::web::http::HttpRequest& request) { return userFind(request); });
     HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request) { return userRegisterOrLogin(request); });
     HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request) { return userLogout(request); });
     HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request) { return contactAdd(request); });
@@ -64,7 +65,7 @@ util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::Ht
             ;
         }
         HttpHeaders headers;
-        headers.add("Set-Cookie", std::format("userId={}; path=/\nSet-Cookie:authToken={}; path=/", userId, authToken));
+        headers.add("Set-Cookie", std::format("userId={}; path=/; SameSite=None; Secure\nSet-Cookie:authToken={}; path=/; SameSite=None; Secure", userId, authToken));
         return response(request, 200, std::move(headers));
     }
     catch (std::exception& ex) {
@@ -124,14 +125,27 @@ util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest
 util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpRequest& request) {
     NotAuthGuard;
     auto contacts = sharedCache.contactGetForId(userId);
+    std::unordered_set<size_t> withIds;
+    for (const auto& contact : contacts) {
+        withIds.insert(contact.id);
+    }
     ArrNode resArr;
     for (auto& contact : contacts) {
         resArr.cont().push_back(contact.toObjNode());
         //resArr.cont().push_back()
     }
+    ArrNode resArrUsers;
+    auto users = sharedCache.usersFindById(withIds);
+    for (auto& user : users) {
+        resArrUsers.cont().push_back(ValNode((int64_t)user.id));
+    }
+    ObjNode res({
+        {"contacts", std::move(resArr)},
+        {"users", std::move(resArrUsers)}
+        });
     HttpHeaders headers;
     headers.add("Content-Type", "application/json");
-    return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
+    return response(request, 200, std::move(headers), JsonEncoder().encode(Node(res)));
 }
 
 util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequest& request) {
@@ -272,6 +286,7 @@ util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& 
     headers.add("Content-Length", body.size());
     headers.borrow(request.headers, "Connection");
     headers.borrow(request.headers, "Origin", "", "Access-Control-Allow-Origin");
+    headers.add("Access-Control-Allow-Credentials", "true");
     return HttpResponse(
         code,
         std::move(headers),
