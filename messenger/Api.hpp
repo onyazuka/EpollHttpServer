@@ -8,6 +8,12 @@
 class Api {
 public:
 	Api(std::unique_ptr<db::MessengerDb> pdb);
+
+	/*
+		OPTIONS response for CORS request.
+	*/
+	util::web::http::HttpResponse onOptions(const util::web::http::HttpRequest& request);
+
 	//inline HttpServer& http() const { return HttpServer::get(); }
 	/*
 		POST /user/login
@@ -18,7 +24,7 @@ public:
 					"pwdHash": "..."
 				}
 		output:
-			response + cookies 'userId' and 'authToken'
+			cookies 'userId' and 'authToken'
 	*/
 	util::web::http::HttpResponse userRegisterOrLogin(const util::web::http::HttpRequest& request);
 

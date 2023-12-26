@@ -15,11 +15,12 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     : db{std::move(pdb)}
 {
     onInit();
-    
+
     // test - TODO delete
     HttpServer::get().registerRoute("/echo", Method::GET, [this](const util::web::http::HttpRequest& request) { return echo(request); });
     HttpServer::get().registerRoute("/hello", Method::GET, [this](const util::web::http::HttpRequest& request) { return hello(request); });
     
+    HttpServer::get().registerRoute("/*", Method::OPTIONS, [this](const util::web::http::HttpRequest& request) { return onOptions(request); });
     HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request) { return userRegisterOrLogin(request); });
     HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request) { return userLogout(request); });
     HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request) { return contactAdd(request); });
@@ -31,6 +32,14 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     HttpServer::get().registerRoute("/message", Method::POST, [this](const util::web::http::HttpRequest& request) { return txtMessageAdd(request); });
     HttpServer::get().registerRoute("/message", Method::GET, [this](const util::web::http::HttpRequest& request) { return txtMessagesGetForChatId(request); });
     HttpServer::get().registerRoute("/storage*", Method::GET, [this](const util::web::http::HttpRequest& request) { return storageGet(request); });
+}
+
+util::web::http::HttpResponse Api::onOptions(const util::web::http::HttpRequest& request) {
+    HttpHeaders headers;
+    headers.add("Access-Control-Allow-Origin", request.headers.find("Origin"));
+    headers.add("Access-Control-Allow-Headers", request.headers.find("Access-Control-Request-Headers"));
+    headers.add("Access-Control-Allow-Method", request.headers.find("Access-Control-Request-Method"));
+    return response(request, 200, std::move(headers));
 }
 
 util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::HttpRequest& request) {
@@ -253,12 +262,16 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
 
 util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request) {
     NotAuthGuard;
-    return HttpServer::get().getEntireFile(request.url, request);
+    auto resp = HttpServer::get().getEntireFile(request.url, request);
+    return response(request, resp.status, std::move(resp.headers), std::move(resp.body));
     //return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
 }
 
 util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {
     Log.info(std::format("Sending response {}", code));
+    headers.add("Content-Length", body.size());
+    headers.borrow(request.headers, "Connection");
+    headers.borrow(request.headers, "Origin", "", "Access-Control-Allow-Origin");
     return HttpResponse(
         code,
         std::move(headers),
