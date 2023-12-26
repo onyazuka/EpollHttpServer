@@ -39,6 +39,14 @@ bool SharedCache::userIsAuthentificated(size_t id, const std::string& authToken)
 	}
 }
 
+std::optional<size_t> SharedCache::userFind(const std::string& username) {
+	std::shared_lock<std::shared_mutex> lck{ usersMtx };
+	if (auto iter = user2Username.find(username); iter != user2Username.end()) {
+		return iter->second.id;
+	}
+	return std::nullopt;
+}
+
 std::pair<size_t, std::string> SharedCache::userLogin(const std::string& username, const std::string& pwdHash) {
 	std::shared_lock<std::shared_mutex> lck{ usersMtx };
 	if (auto iter = user2Username.find(username); iter == user2Username.end()) {

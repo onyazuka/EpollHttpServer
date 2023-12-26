@@ -32,6 +32,18 @@ public:
 	util::web::http::HttpResponse userLogout(const util::web::http::HttpRequest& request);
 
 	/*
+		GET /user
+		input:
+			json:
+				{
+					"username": "..."
+				}
+		output:
+			unsets cookies 'userId' and 'authToken'
+	*/
+	util::web::http::HttpResponse userFind(const util::web::http::HttpRequest& request);
+
+	/*
 		POST /contact
 		input:
 			json:

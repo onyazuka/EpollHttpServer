@@ -27,6 +27,7 @@ public:
 	void init(UsersV&& _users, AddressBooksV&& _addrBooks, ChatsV&& _chats);
 	void userAdd(UserT user);
 	bool userIsAuthentificated(size_t id, const std::string& authToken);
+	std::optional<size_t> userFind(const std::string& username);
 	// returns authToken if user exists, else empty string
 	std::pair<size_t, std::string> userLogin(const std::string& username, const std::string& pwdHash);
 	void contactAdd(const AddressBookT& entry);

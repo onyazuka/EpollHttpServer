@@ -72,6 +72,25 @@ util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest
     return response(request, 200, std::move(headers));
 }
 
+util::web::http::HttpResponse Api::userFind(const util::web::http::HttpRequest& request) {
+    try {
+        NotAuthGuard;
+        auto json = JsonDecoder().decode(request.body);
+        auto username = json.as<std::string>("username");
+        auto id = sharedCache.userFind(username);
+        if (!id.has_value()) {
+            return response(request, 404);
+        }
+        HttpHeaders headers;
+        headers.add("Content-Type", "application/json");
+        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(ValNode((int64_t)id.value()))));
+    }
+    catch (std::exception& ex) {
+        Log.info(ex.what());
+        return response(request, 400);
+    }
+}
+
 util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest& request) {
     try {
         NotAuthGuard;
