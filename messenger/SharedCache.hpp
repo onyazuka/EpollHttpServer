@@ -29,6 +29,8 @@ public:
 	bool userIsAuthentificated(size_t id, const std::string& authToken);
 	std::optional<size_t> userFind(const std::string& username);
 	UsersV usersFindById(const std::unordered_set<size_t>& ids);
+	template<typename T, typename F>
+	UsersV usersFindById(const T& data, F extractor);
 	// returns authToken if user exists, else empty string
 	std::pair<size_t, std::string> userLogin(const std::string& username, const std::string& pwdHash);
 	void contactAdd(const AddressBookT& entry);
@@ -52,3 +54,15 @@ private:
 	std::shared_mutex addrBooksMtx;
 	std::shared_mutex chatsMtx;
 };
+
+template<typename T, typename F>
+SharedCache::UsersV SharedCache::usersFindById(const T& data, F extractor) {
+	std::shared_lock<std::shared_mutex> lck{ usersMtx };
+	UsersV users;
+	for (const auto& elem : data) {
+		if (auto iter = user2Id.find(extractor(elem)); iter != user2Id.end()) {
+			users.insert(iter->second);
+		}
+	}
+	return users;
+}

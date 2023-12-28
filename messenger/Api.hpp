@@ -38,7 +38,7 @@ public:
 	util::web::http::HttpResponse userLogout(const util::web::http::HttpRequest& request);
 
 	/*
-		GET /user
+		GET /user/find* (/user/find?username=neko)
 		input:
 			json:
 				{
@@ -161,4 +161,5 @@ private:
 	std::string generateAuthToken(const std::string& username, const std::string& pwdHash);
 	std::unique_ptr<db::MessengerDb> db;
 	SharedCache sharedCache;
+	std::function<std::pair<std::string, util::web::json::Node>(const db::User&)> usernameByIdExtractor;
 };

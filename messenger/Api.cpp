@@ -14,6 +14,10 @@ using namespace db;
 Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     : db{std::move(pdb)}
 {
+    usernameByIdExtractor = [](const auto& user) {
+        return std::make_pair(std::to_string(user.id), user.username);
+        };
+
     onInit();
 
     // test - TODO delete
@@ -21,7 +25,7 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     HttpServer::get().registerRoute("/hello", Method::GET, [this](const util::web::http::HttpRequest& request) { return hello(request); });
     
     HttpServer::get().registerRoute("/*", Method::OPTIONS, [this](const util::web::http::HttpRequest& request) { return onOptions(request); });
-    HttpServer::get().registerRoute("/user", Method::GET, [this](const util::web::http::HttpRequest& request) { return userFind(request); });
+    HttpServer::get().registerRoute("/user/find*", Method::GET, [this](const util::web::http::HttpRequest& request) { return userFind(request); });
     HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request) { return userRegisterOrLogin(request); });
     HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request) { return userLogout(request); });
     HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request) { return contactAdd(request); });
@@ -85,8 +89,10 @@ util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest
 util::web::http::HttpResponse Api::userFind(const util::web::http::HttpRequest& request) {
     try {
         NotAuthGuard;
-        auto json = JsonDecoder().decode(request.body);
-        auto username = json.as<std::string>("username");
+        auto username = request.query.find("username");
+        if (username.empty()) {
+            throw std::logic_error("request with empty username");
+        }
         auto id = sharedCache.userFind(username);
         if (!id.has_value()) {
             return response(request, 404);
@@ -125,23 +131,12 @@ util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest
 util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpRequest& request) {
     NotAuthGuard;
     auto contacts = sharedCache.contactGetForId(userId);
-    std::unordered_set<size_t> withIds;
-    for (const auto& contact : contacts) {
-        withIds.insert(contact.id);
-    }
-    ArrNode resArr;
-    for (auto& contact : contacts) {
-        resArr.cont().push_back(contact.toObjNode());
-        //resArr.cont().push_back()
-    }
-    ArrNode resArrUsers;
-    auto users = sharedCache.usersFindById(withIds);
-    for (auto& user : users) {
-        resArrUsers.cont().push_back(ValNode((int64_t)user.id));
-    }
+    ArrNode resContacts = ArrNode::makeFrom(contacts);
+    auto users = sharedCache.usersFindById(contacts, [](const SharedCache::AddressBookT& contact) { return contact.withId; });
+    ObjNode resUsers = ObjNode::makeFrom(users, usernameByIdExtractor);
     ObjNode res({
-        {"contacts", std::move(resArr)},
-        {"users", std::move(resArrUsers)}
+        {"contacts", std::move(resContacts)},
+        {"users", std::move(resUsers)}
         });
     HttpHeaders headers;
     headers.add("Content-Type", "application/json");
@@ -192,11 +187,7 @@ util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& r
 util::web::http::HttpResponse Api::chatsGetForId(const util::web::http::HttpRequest& request) {
     NotAuthGuard;
     auto chats = sharedCache.chatsGetForId(userId);
-    ArrNode resArr;
-    for (auto& chat : chats) {
-        resArr.cont().push_back(chat.toObjNode());
-        //resArr.cont().push_back()
-    }
+    ArrNode resArr = ArrNode::makeFrom(chats);;
     HttpHeaders headers;
     headers.add("Content-Type", "application/json");
     return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
@@ -259,11 +250,7 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
         if (err != db::MessengerDb::Error::Ok) {
             return response(request, 400);
         }
-        ArrNode resArr;
-        for (auto& msg : messages) {
-            resArr.cont().push_back(msg.toObjNode());
-            //resArr.cont().push_back()
-        }
+        ArrNode resArr = ArrNode::makeFrom(messages);
         HttpHeaders headers;
         headers.add("Content-Type", "application/json");
         return response(request, 200, std::move(headers), JsonEncoder().encode(Node(resArr)));
