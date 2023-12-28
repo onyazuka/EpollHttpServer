@@ -60,8 +60,11 @@ SharedCache::UsersV SharedCache::usersFindById(const T& data, F extractor) {
 	std::shared_lock<std::shared_mutex> lck{ usersMtx };
 	UsersV users;
 	for (const auto& elem : data) {
-		if (auto iter = user2Id.find(extractor(elem)); iter != user2Id.end()) {
-			users.insert(iter->second);
+		auto ids = extractor(elem);
+		for (auto id : ids) {
+			if (auto iter = user2Id.find(id); iter != user2Id.end()) {
+				users.insert(iter->second);
+			}
 		}
 	}
 	return users;

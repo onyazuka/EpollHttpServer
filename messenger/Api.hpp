@@ -70,8 +70,8 @@ public:
 			empty(cookies)
 		output:
 			{
-				contacts: [],
-				users: [id1,id2,...,idN,...],
+				contacts: {id:...,},
+				users: {id1: username1, ,,,},
 			}
 	*/
 	util::web::http::HttpResponse contactsGetForId(const util::web::http::HttpRequest& request);
@@ -108,7 +108,10 @@ public:
 		input:
 			empty(cookies)
 		output:
-			json array of chats
+			{
+				chats: {id:...,},
+				users: {id1: username1, ,,,},
+			}
 	*/
 	util::web::http::HttpResponse chatsGetForId(const util::web::http::HttpRequest& request);
 
@@ -138,14 +141,14 @@ public:
 	util::web::http::HttpResponse txtMessageAdd(const util::web::http::HttpRequest& request);
 
 	/*
-		GET /message
+		GET /message?chatId=N
 		input:
-			json:
-				{
-					"chatId": N
-				}
+			empty
 		output:
-			json array of messages
+			{
+				messages: {id:...,},
+				users: {id1: username1, ,,,},
+			}
 	*/
 	util::web::http::HttpResponse txtMessagesGetForChatId(const util::web::http::HttpRequest& request);
 

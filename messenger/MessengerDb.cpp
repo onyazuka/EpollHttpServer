@@ -211,11 +211,11 @@ std::pair<MessengerDb::Error, std::optional<size_t>> MessengerDb::addChat(size_t
         std::swap(whoId, withId);
     }
     try {
-        db->query(std::format("select count(*) from AddressBook where (whoId={} and withId={}) or (whoId={} and withId={})", whoId, withId, withId, whoId));
+        //db->query(std::format("select count(*) from AddressBook where (whoId={} and withId={}) or (whoId={} and withId={})", whoId, withId, withId, whoId));
         // whoId and withId should be mutual contacts in AddressBook
-        if (db->result<uint64_t>() != 2) {
-            return { Error::InvalidQuery, std::nullopt };
-        }
+        //if (db->result<uint64_t>() != 2) {
+          //  return { Error::InvalidQuery, std::nullopt };
+        //}
         int sz = db->modify(std::format("insert into Chat values (NULL, {}, {})", whoId, withId));
         if (sz) {
             db->query("select LAST_INSERT_ID()");
