@@ -41,11 +41,12 @@ namespace db {
 	};
 
 	struct Chat {
+		Chat();
 		Chat(size_t id, size_t whoId, size_t withId);
 		Chat(size_t id);
-		size_t id;
-		size_t whoId;
-		size_t withId;
+		size_t id = 0;
+		size_t whoId = 0;
+		size_t withId = 0;
 		util::web::json::ObjNode toObjNode() const;
 		inline bool operator==(const Chat& other) const { return id == other.id; }
 	};

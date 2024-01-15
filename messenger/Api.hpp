@@ -12,7 +12,7 @@ public:
 	/*
 		OPTIONS response for CORS request.
 	*/
-	util::web::http::HttpResponse onOptions(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse onOptions(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	//inline HttpServer& http() const { return HttpServer::get(); }
 	/*
@@ -26,7 +26,7 @@ public:
 		output:
 			cookies 'userId' and 'authToken'
 	*/
-	util::web::http::HttpResponse userRegisterOrLogin(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse userRegisterOrLogin(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		POST /user/logout
@@ -35,7 +35,7 @@ public:
 		output:
 			unsets cookies 'userId' and 'authToken'
 	*/
-	util::web::http::HttpResponse userLogout(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse userLogout(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		GET /user/find* (/user/find?username=neko)
@@ -47,7 +47,7 @@ public:
 		output:
 			userId - number
 	*/
-	util::web::http::HttpResponse userFind(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse userFind(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		POST /contact
@@ -62,7 +62,7 @@ public:
 					{addrBook}
 				}
 	*/
-	util::web::http::HttpResponse contactAdd(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse contactAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		GET /contact
@@ -74,7 +74,7 @@ public:
 				users: {id1: username1, ,,,},
 			}
 	*/
-	util::web::http::HttpResponse contactsGetForId(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse contactsGetForId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		DELETE /contact
@@ -86,7 +86,7 @@ public:
 		output:
 			empty
 	*/
-	util::web::http::HttpResponse contactDelete(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse contactDelete(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		POST /chat
@@ -101,7 +101,7 @@ public:
 					{chat}
 				}
 	*/
-	util::web::http::HttpResponse chatAdd(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse chatAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		GET /chat
@@ -113,7 +113,7 @@ public:
 				users: {id1: username1, ,,,},
 			}
 	*/
-	util::web::http::HttpResponse chatsGetForId(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse chatsGetForId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		DELETE /chat
@@ -125,7 +125,7 @@ public:
 		output:
 			empty
 	*/
-	util::web::http::HttpResponse chatDelete(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse chatDelete(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		POST /message
@@ -138,7 +138,7 @@ public:
 		output:
 			json txtMessage
 	*/
-	util::web::http::HttpResponse txtMessageAdd(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse txtMessageAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
 	/*
 		GET /message?chatId=N
@@ -150,12 +150,14 @@ public:
 				users: {id1: username1, ,,,},
 			}
 	*/
-	util::web::http::HttpResponse txtMessagesGetForChatId(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse txtMessagesGetForChatId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
-	util::web::http::HttpResponse storageGet(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse storageGet(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 
-	util::web::http::HttpResponse echo(const util::web::http::HttpRequest& request);
-	util::web::http::HttpResponse hello(const util::web::http::HttpRequest& request);
+	util::web::http::HttpResponse eventsSubscribe(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
+
+	util::web::http::HttpResponse echo(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
+	util::web::http::HttpResponse hello(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn = nullptr);
 private:
 	util::web::http::HttpResponse response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers = {}, std::string&& body = "");
 	void onInit();

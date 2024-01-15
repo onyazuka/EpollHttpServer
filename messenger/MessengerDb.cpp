@@ -29,6 +29,11 @@ AddressBook::AddressBook(size_t id)
     ;
 }
 
+Chat::Chat() 
+{
+    ;
+}
+
 Chat::Chat(size_t id, size_t whoId, size_t withId)
     : id{id}, whoId{whoId}, withId{withId}
 {

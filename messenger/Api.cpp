@@ -2,6 +2,7 @@
 #include <format>
 #include "ProjLogger.hpp"
 #include "profiling.hpp"
+#include "EventBroker.hpp"
 
 using namespace util::web::http;
 using namespace util::web::json;
@@ -21,25 +22,26 @@ Api::Api(std::unique_ptr<db::MessengerDb> pdb)
     onInit();
 
     // test - TODO delete
-    HttpServer::get().registerRoute("/echo", Method::GET, [this](const util::web::http::HttpRequest& request) { return echo(request); });
-    HttpServer::get().registerRoute("/hello", Method::GET, [this](const util::web::http::HttpRequest& request) { return hello(request); });
+    HttpServer::get().registerRoute("/echo", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return echo(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/hello", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return hello(request, cbMsgFn); });
     
-    HttpServer::get().registerRoute("/*", Method::OPTIONS, [this](const util::web::http::HttpRequest& request) { return onOptions(request); });
-    HttpServer::get().registerRoute("/user/find*", Method::GET, [this](const util::web::http::HttpRequest& request) { return userFind(request); });
-    HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request) { return userRegisterOrLogin(request); });
-    HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request) { return userLogout(request); });
-    HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request) { return contactAdd(request); });
-    HttpServer::get().registerRoute("/contact", Method::GET, [this](const util::web::http::HttpRequest& request) { return contactsGetForId(request); });
-    HttpServer::get().registerRoute("/contact", Method::DELETE, [this](const util::web::http::HttpRequest& request) { return contactDelete(request); });
-    HttpServer::get().registerRoute("/chat", Method::POST, [this](const util::web::http::HttpRequest& request) { return chatAdd(request); });
-    HttpServer::get().registerRoute("/chat", Method::GET, [this](const util::web::http::HttpRequest& request) { return chatsGetForId(request); });
-    HttpServer::get().registerRoute("/chat", Method::DELETE, [this](const util::web::http::HttpRequest& request) { return chatDelete(request); });
-    HttpServer::get().registerRoute("/message", Method::POST, [this](const util::web::http::HttpRequest& request) { return txtMessageAdd(request); });
-    HttpServer::get().registerRoute("/message*", Method::GET, [this](const util::web::http::HttpRequest& request) { return txtMessagesGetForChatId(request); });
-    HttpServer::get().registerRoute("/storage*", Method::GET, [this](const util::web::http::HttpRequest& request) { return storageGet(request); });
+    HttpServer::get().registerRoute("/*", Method::OPTIONS, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return onOptions(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/user/find*", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return userFind(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/user/login", Method::POST, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return userRegisterOrLogin(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/user/logout", Method::POST, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return userLogout(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/contact", Method::POST, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return contactAdd(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/contact", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return contactsGetForId(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/contact", Method::DELETE, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return contactDelete(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/chat", Method::POST, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return chatAdd(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/chat", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return chatsGetForId(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/chat", Method::DELETE, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return chatDelete(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/message", Method::POST, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return txtMessageAdd(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/message*", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return txtMessagesGetForChatId(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/storage*", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return storageGet(request, cbMsgFn); });
+    HttpServer::get().registerRoute("/events", Method::GET, [this](const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cbMsgFn) { return eventsSubscribe(request, cbMsgFn); });
 }
 
-util::web::http::HttpResponse Api::onOptions(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::onOptions(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     HttpHeaders headers;
     headers.add("Access-Control-Allow-Origin", request.headers.find("Origin"));
     headers.add("Access-Control-Allow-Headers", request.headers.find("Access-Control-Request-Headers"));
@@ -47,7 +49,7 @@ util::web::http::HttpResponse Api::onOptions(const util::web::http::HttpRequest&
     return response(request, 200, std::move(headers));
 }
 
-util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         auto json = JsonDecoder().decode(request.body);
         auto username = json.as<std::string>("username");
@@ -78,7 +80,7 @@ util::web::http::HttpResponse Api::userRegisterOrLogin(const util::web::http::Ht
     }
 }
 
-util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     //if (!isUserAuthenticated(request)) return notAuth(request);
     NotAuthGuard;
     HttpHeaders headers;
@@ -86,7 +88,7 @@ util::web::http::HttpResponse Api::userLogout(const util::web::http::HttpRequest
     return response(request, 200, std::move(headers));
 }
 
-util::web::http::HttpResponse Api::userFind(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::userFind(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto username = request.query.find("username");
@@ -107,7 +109,7 @@ util::web::http::HttpResponse Api::userFind(const util::web::http::HttpRequest& 
     }
 }
 
-util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
@@ -134,7 +136,7 @@ util::web::http::HttpResponse Api::contactAdd(const util::web::http::HttpRequest
     }
 }
 
-util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     NotAuthGuard;
     auto contacts = sharedCache.contactGetForId(userId);
     ObjNode resContacts = ObjNode::makeFrom(contacts, [](const auto& contact) { return std::make_pair(std::to_string(contact.id), contact.toObjNode()); });
@@ -149,7 +151,7 @@ util::web::http::HttpResponse Api::contactsGetForId(const util::web::http::HttpR
     return response(request, 200, std::move(headers), JsonEncoder().encode(Node(res)));
 }
 
-util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
@@ -169,7 +171,7 @@ util::web::http::HttpResponse Api::contactDelete(const util::web::http::HttpRequ
     }
 }
 
-util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
@@ -190,7 +192,7 @@ util::web::http::HttpResponse Api::chatAdd(const util::web::http::HttpRequest& r
     }
 }
 
-util::web::http::HttpResponse Api::chatsGetForId(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::chatsGetForId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     NotAuthGuard;
     auto chats = sharedCache.chatsGetForId(userId);
     ObjNode resChats = ObjNode::makeFrom(chats, [](const auto& chat) { return std::make_pair(std::to_string(chat.id), chat.toObjNode()); });
@@ -205,7 +207,7 @@ util::web::http::HttpResponse Api::chatsGetForId(const util::web::http::HttpRequ
     return response(request, 200, std::move(headers), JsonEncoder().encode(Node(res)));
 }
 
-util::web::http::HttpResponse Api::chatDelete(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::chatDelete(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
@@ -225,14 +227,19 @@ util::web::http::HttpResponse Api::chatDelete(const util::web::http::HttpRequest
     }
 }
 
-util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto json = JsonDecoder().decode(request.body);
         auto chatId = json.as<size_t>("chatId");
         std::string message = json.as<std::string>("message");
-        if (!sharedCache.chatsGetForId(userId).contains(db::Chat(chatId))) {
+        auto chats = sharedCache.chatsGetForId(userId);
+        db::Chat curChat;
+        if (auto iter = chats.find(db::Chat(chatId)); iter == chats.end()) {
             return response(request, 403);
+        }
+        else {
+            curChat = *iter;
         }
         size_t ts = tsMs();
         auto [err, optId] = db->addTxtMessage(chatId, userId, message, ts);
@@ -242,7 +249,10 @@ util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequ
         HttpHeaders headers;
         headers.add("Content-Type", "application/json");
         db::TxtMessage msg(optId.value(), chatId, userId, message, ts);
-        return response(request, 200, std::move(headers), JsonEncoder().encode(Node(msg.toObjNode())));
+        auto body = JsonEncoder().encode(Node(msg.toObjNode()));
+        EventBroker::get().emitEvent(userId == curChat.whoId ? curChat.withId : curChat.whoId, "data: " + body + "\r\n\r\n");
+        auto resp = response(request, 200, std::move(headers), std::move(body));
+        return resp;
     }
     catch (std::exception& ex) {
         Log.info(ex.what());
@@ -250,7 +260,7 @@ util::web::http::HttpResponse Api::txtMessageAdd(const util::web::http::HttpRequ
     }
 }
 
-util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     try {
         NotAuthGuard;
         auto sChatId = request.query.find("chatId");
@@ -282,11 +292,30 @@ util::web::http::HttpResponse Api::txtMessagesGetForChatId(const util::web::http
     }
 }
 
-util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::storageGet(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     NotAuthGuard;
     auto resp = HttpServer::get().getEntireFile(request.url, request);
     return response(request, resp.status, std::move(resp.headers), std::move(resp.body));
     //return response(request, 200, {}, "<html><body><h1>Hi, storage!</h1></body></html>");
+}
+
+util::web::http::HttpResponse Api::eventsSubscribe(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn cb) {
+    NotAuthGuard;
+    HttpHeaders headers;
+    headers.add("Content-Type", "text/event-stream");
+    headers.add("Connection", "keep-alive");
+    headers.add("Cache-Control", "no-store");
+    headers.add("Access-Control-Allow-Credentials", "true");
+    headers.borrow(request.headers, "Origin", "", "Access-Control-Allow-Origin");
+    EventBroker::get().registerProducerAndHandler(userId, cb);
+    /*std::thread([this, userId, request, headers]() {
+        for(size_t i = 0; i < 10; ++i) {
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+            EventBroker::get().emitEvent(userId, std::string("data: Hello EventSource\r\n\r\n"));
+        }
+        }).detach();*/
+    return HttpResponse(200, std::move(headers), "HTTP/1.1 200\r\n", request.headers);
+    //return response(request, 200, std::move(headers));
 }
 
 util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& request, size_t code, util::web::http::HttpHeaders&& headers, std::string&& body) {
@@ -303,9 +332,12 @@ util::web::http::HttpResponse Api::response(const util::web::http::HttpRequest& 
     );
 }
 
-util::web::http::HttpResponse Api::echo(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::echo(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     std::string srequest = request.encode();
     //std::osyncstream(std::cout) << srequest << std::endl;
+    auto headers = request.headers;
+    auto body = request.body;
+    return response(request, 200, std::move(headers), std::move(body));
     HttpResponse response(
         200,
         HttpHeaders(),
@@ -315,16 +347,10 @@ util::web::http::HttpResponse Api::echo(const util::web::http::HttpRequest& requ
     return response;
 }
 
-util::web::http::HttpResponse Api::hello(const util::web::http::HttpRequest& request) {
+util::web::http::HttpResponse Api::hello(const util::web::http::HttpRequest& request, HttpServer::CallbackMsgFn) {
     std::string srequest = request.encode();
     //std::osyncstream(std::cout) << srequest << std::endl;
-    HttpResponse response(
-        200,
-        HttpHeaders(),
-        "<html><body><h1>Hello</h1></body></html>",
-        request.headers
-    );
-    return response;
+    return response(request, 200, HttpHeaders(), "<html><body><h1>Hello</h1></body></html>");
 }
 
 void Api::onInit() {
